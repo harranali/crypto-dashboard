@@ -2,70 +2,7 @@ import { NextResponse } from "next/server";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
 import db from "@/lib/db";
 import type { Coin } from "@/types/coin";
-
-// Helper to calculate extra metrics safely
-function calculateExtra(data: any) {
-    const sparkline = data.market_data?.sparkline_7d?.price || [];
-    const first = sparkline[0] || 0;
-    const last = sparkline[sparkline.length - 1] || 0;
-  
-    const mean = sparkline.length
-      ? sparkline.reduce((a: number, b: number) => a + b, 0) / sparkline.length
-      : 0;
-    const variance = sparkline.length
-      ? sparkline.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / sparkline.length
-      : 0;
-  
-    const percentToATH = data.market_data?.ath?.usd
-      ? ((data.market_data.current_price.usd / data.market_data.ath.usd) - 1) * 100
-      : null;
-  
-    const circulatingPercent = data.market_data?.max_supply
-      ? (data.market_data.circulating_supply / data.market_data.max_supply) * 100
-      : null;
-  
-    const momentum = last > first ? "Bullish" : last < first ? "Bearish" : "Neutral";
-  
-    const lastFetched = new Date().toISOString();
-  
-    // ✅ About section fields, safely defaulting to "N/A"
-    const rank = data.market_cap_rank != null ? data.market_cap_rank.toString() : "N/A";
-    const allTimeHigh = data.market_data?.ath?.usd != null ? `$${data.market_data.ath.usd.toLocaleString()}` : "N/A";
-    const allTimeLow = data.market_data?.atl?.usd != null ? `$${data.market_data.atl.usd.toLocaleString()}` : "N/A";
-    const description = data.description?.en || "N/A";
-    const website = data.links?.homepage?.[0] || "N/A";
-    const twitter = data.links?.twitter_screen_name || "N/A";
-    const reddit = data.links?.subreddit_url || "N/A";
-    const devScore = data.developer_score != null ? data.developer_score.toString() : "N/A";
-  
-    return {
-      sevenDayChange: first ? ((last - first) / first) * 100 : 0,
-      volatility: Math.sqrt(variance),
-      ma7: mean,
-      priceToMarketCap: data.market_data?.market_cap?.usd
-        ? data.market_data.current_price.usd / data.market_data.market_cap.usd
-        : null,
-      priceToVolume: data.market_data?.total_volume?.usd
-        ? data.market_data.current_price.usd / data.market_data.total_volume.usd
-        : null,
-      momentum,
-      percentToATH,
-      circulatingPercent,
-      sparkline,
-      lastFetched, // raw ISO string only
-  
-      // About section
-      rank,
-      allTimeHigh,
-      allTimeLow,
-      description,
-      website,
-      twitter,
-      reddit,
-      devScore,
-    };
-  }
-  
+import { calculateExtra } from "@/lib/enrichCoin";
 
 // Helper to format relative time
 function formatTimeAgo(dateStr?: string) {
@@ -80,8 +17,8 @@ function formatTimeAgo(dateStr?: string) {
 
 // GET: fetch details from cached coins table
 export async function GET(req: Request, context: { params: { id: string } }) {
-  const { params } = context; // you must get it from context
-  const id = params.id;
+  // Await the params object before accessing its properties
+  const { id } = await context.params;
 
   const row = db.prepare(`SELECT * FROM coins WHERE id = ?`).get(id);
 
@@ -112,8 +49,8 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 
 // POST: fetch from CoinGecko and update DB
 export async function POST(req: Request, context: { params: { id: string } }) {
-  const { params } = await context; // ✅ await context
-  const id = params.id;
+  // Await the params object before accessing its properties
+  const { id } = await context.params;
 
   try {
     const res = await fetch(
