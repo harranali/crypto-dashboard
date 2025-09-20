@@ -128,17 +128,27 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
             </div>
 
             <div className="flex flex-col items-end gap-1">
-              <Button variant="outline" size="icon" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw className={cn("h-5 w-5", loading && "animate-spin text-blue-500")} />
-              </Button>
-              {isOutdated ? (
-                <span className="text-red-500 text-xs">
-                  Outdated (last updated more than 5 minutes ago). Click to refresh.
-                </span>
-              ) : lastFetchedFormatted ? (
-                <span className="text-gray-500 text-xs">Updated {lastFetchedFormatted}</span>
-              ) : null}
+            <Button 
+              variant="outline" 
+              size="sm"  // instead of "icon"
+              onClick={handleRefresh} 
+              disabled={loading}
+              className="flex items-center gap-1 px-3"
+            >
+              <RefreshCw className={cn("h-5 w-5", loading && "animate-spin text-blue-500")} />
+              Refresh
+            </Button>
+              {!loading && (
+                isOutdated ? (
+                  <span className="text-red-500 text-xs">
+                    Outdated (last updated more than 5 minutes ago). Click to refresh.
+                  </span>
+                ) : lastFetchedFormatted ? (
+                  <span className="text-gray-500 text-xs">Updated {lastFetchedFormatted}</span>
+                ) : null
+              )}
             </div>
+
           </div>
         </SheetHeader>
 
