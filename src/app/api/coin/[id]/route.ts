@@ -5,7 +5,7 @@ import type { Coin } from "@/types/coin";
 import { calculateExtra } from "@/lib/enrichCoin";
 
 // Helper to format relative time
-function formatTimeAgo(dateStr?: string) {
+function format_time_ago(dateStr?: string) {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -17,7 +17,6 @@ function formatTimeAgo(dateStr?: string) {
 
 // GET: fetch details from cached coins table
 export async function GET(req: Request, context: { params: { id: string } }) {
-  // Await the params object before accessing its properties
   const { id } = await context.params;
 
   const row = db.prepare(`SELECT * FROM coins WHERE id = ?`).get(id);
@@ -27,29 +26,27 @@ export async function GET(req: Request, context: { params: { id: string } }) {
   }
 
   const extra = row.extra ? JSON.parse(row.extra) : {};
-  const lastFetchedFormatted = extra.lastFetched ? formatTimeAgo(extra.lastFetched) : null;
-
+  const last_fetched_formatted = extra.last_fetched ? format_time_ago(extra.last_fetched) : null;
   return NextResponse.json({
-    coinData: {
+    coin_data: {
       id: row.id,
+      name: row.name,
       symbol: row.symbol,
-      price: `$${row.current_price?.toLocaleString() || "0"}`,
-      change: `${row.price_change_percentage_24h?.toFixed(2) || "0"}%`,
-      isUp: (row.price_change_percentage_24h || 0) > 0,
-      marketCap: row.market_cap || 0,
-      volume: row.total_volume || 0,
-      supply: row.circulating_supply?.toLocaleString() || "0",
-      maxSupply: row.max_supply?.toLocaleString() || "0",
-      image: row.image || "",
-      extra: { ...extra, lastFetchedFormatted },
+      current_price: row.current_price,
+      price_change_percentage_24h: row.price_change_percentage_24h,
+      market_cap: row.market_cap,
+      total_volume: row.total_volume,
+      circulating_supply: row.circulating_supply,
+      max_supply: row.max_supply,
+      image: row.image,
+      extra: extra,
+      last_updated: row.last_updated,
     },
-    sparkline: extra.sparkline || [],
   });
 }
 
 // POST: fetch from CoinGecko and update DB
 export async function POST(req: Request, context: { params: { id: string } }) {
-  // Await the params object before accessing its properties
   const { id } = await context.params;
 
   try {
@@ -59,8 +56,8 @@ export async function POST(req: Request, context: { params: { id: string } }) {
     if (!res.ok) throw new Error("Failed to fetch CoinGecko data");
 
     const data = await res.json();
-    const extraObj = calculateExtra(data); // this is an object
-    const extraStr = JSON.stringify(extraObj); // convert to string for DB
+    const extra_obj = calculateExtra(data); // object in snake_case
+    const extra_str = JSON.stringify(extra_obj); // store in DB
 
     const coin: Coin = {
       id: data.id,
@@ -73,28 +70,19 @@ export async function POST(req: Request, context: { params: { id: string } }) {
       circulating_supply: data.market_data?.circulating_supply || 0,
       max_supply: data.market_data?.max_supply || 0,
       image: data.image?.thumb || "",
-      extra: extraStr,
+      extra: extra_str,
       last_updated: data.last_updated || new Date().toISOString(),
     };
 
     insertOrUpdateCoins([coin]);
 
     return NextResponse.json({
-      coinData: {
-        id: coin.id,
-        symbol: coin.symbol,
-        price: `$${coin.current_price.toLocaleString()}`,
-        change: `${coin.price_change_percentage_24h.toFixed(2)}%`,
-        isUp: coin.price_change_percentage_24h > 0,
-        marketCap: `$${coin.market_cap.toLocaleString()}`,
-        volume: `$${coin.total_volume.toLocaleString()}`,
-        supply: coin.circulating_supply.toLocaleString(),
-        maxSupply: coin.max_supply.toLocaleString(),
-        image: coin.image,
-        extra: extraObj,
-      },
-      sparkline: extraObj.sparkline,
+      coin_data: {
+        ...coin, 
+        extra: extra_obj,
+      }
     });
+
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

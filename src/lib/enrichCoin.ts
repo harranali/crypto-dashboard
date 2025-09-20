@@ -11,53 +11,52 @@ export function calculateExtra(data: any) {
     ? sparkline.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / sparkline.length
     : 0;
 
-  const percentToATH = data.market_data?.ath?.usd
+  const percent_to_ath = data.market_data?.ath?.usd
     ? ((data.market_data.current_price.usd / data.market_data.ath.usd) - 1) * 100
     : null;
 
-  const circulatingPercent = data.market_data?.max_supply
+  const circulating_percent = data.market_data?.max_supply
     ? (data.market_data.circulating_supply / data.market_data.max_supply) * 100
     : null;
 
   const momentum = last > first ? "Bullish" : last < first ? "Bearish" : "Neutral";
+  const last_fetched = new Date().toISOString();
 
-  const lastFetched = new Date().toISOString();
-
-  // ✅ About section fields, safely defaulting to "N/A"
+  // About section fields
   const rank = data.market_cap_rank != null ? data.market_cap_rank.toString() : "N/A";
-  const allTimeHigh = data.market_data?.ath?.usd != null ? `$${data.market_data.ath.usd.toLocaleString()}` : "N/A";
-  const allTimeLow = data.market_data?.atl?.usd != null ? `$${data.market_data.atl.usd.toLocaleString()}` : "N/A";
+  const all_time_high = data.market_data?.ath?.usd != null ? `$${data.market_data.ath.usd.toLocaleString()}` : "N/A";
+  const all_time_low = data.market_data?.atl?.usd != null ? `$${data.market_data.atl.usd.toLocaleString()}` : "N/A";
   const description = data.description?.en || "N/A";
   const website = data.links?.homepage?.[0] || "N/A";
   const twitter = data.links?.twitter_screen_name || "N/A";
   const reddit = data.links?.subreddit_url || "N/A";
-  const devScore = data.developer_score != null ? data.developer_score.toString() : "N/A";
+  const dev_score = data.developer_score != null ? data.developer_score.toString() : "N/A";
 
   return {
-    sevenDayChange: first ? ((last - first) / first) * 100 : 0,
+    seven_day_change: first ? ((last - first) / first) * 100 : 0,
     volatility: Math.sqrt(variance),
     ma7: mean,
-    priceToMarketCap: data.market_data?.market_cap?.usd
+    price_to_market_cap: data.market_data?.market_cap?.usd
       ? data.market_data.current_price.usd / data.market_data.market_cap.usd
       : null,
-    priceToVolume: data.market_data?.total_volume?.usd
+    price_to_volume: data.market_data?.total_volume?.usd
       ? data.market_data.current_price.usd / data.market_data.total_volume.usd
       : null,
     momentum,
-    percentToATH,
-    circulatingPercent,
+    percent_to_ath,
+    circulating_percent,
     sparkline,
-    lastFetched, // raw ISO string only
+    last_fetched,
 
     // About section
     rank,
-    allTimeHigh,
-    allTimeLow,
+    all_time_high,
+    all_time_low,
     description,
     website,
     twitter,
     reddit,
-    devScore,
+    dev_score,
   };
 }
 

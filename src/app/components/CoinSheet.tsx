@@ -8,39 +8,13 @@ import { ChartSection } from "@/app/sections/ChartSection";
 import { AboutSection } from "@/app/components/AboutSection";
 import { MetricsGrid } from "@/app/components/MetricsGrid";
 import { Button } from "@/components/ui/button";
-
-interface CoinData {
-  id: string;
-  symbol?: string;
-  price?: string;
-  change?: string;
-  isUp?: boolean;
-  marketCap?: string;
-  volume?: string;
-  supply?: string;
-  maxSupply?: string;
-  image?: string;
-  extra?: {
-    sevenDayChange?: number;
-    volatility?: number;
-    ma7?: number;
-    priceToMarketCap?: number | null;
-    priceToVolume?: number | null;
-    momentum?: string;
-    percentToATH?: number;
-    circulatingPercent?: number;
-    volume7dChange?: number;
-    lastFetched?: string;
-    lastFetchedFormatted?: string;
-  };
-}
+import type { ParsedCoin } from "@/types/coin";
 
 interface ExtraDetails {
-  allTimeHigh?: string;
-  allTimeLow?: string;
+  all_time_high?: string;
+  all_time_low?: string;
   rank?: string;
-  rankChange24h?: number;
-  devScore?: string;
+  dev_score?: string;
   description?: string;
   website?: string;
   twitter?: string;
@@ -54,31 +28,50 @@ interface CoinSheetProps {
 }
 
 export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps) {
-  const [coinData, setCoinData] = useState<CoinData | null>(null);
+  const [coinData, setCoinData] = useState<ParsedCoin | null>(null);
   const [chartData, setChartData] = useState<number[]>([]);
   const [extraDetails, setExtraDetails] = useState<ExtraDetails>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch coin data (GET)
-  const fetchCoinData = async () => {
+  const computeDerivedFields = (coin: ParsedCoin): ParsedCoin => ({
+    ...coin,
+    price_formatted: `$${coin.current_price.toLocaleString()}`,
+    change_formatted: `${coin.price_change_percentage_24h.toFixed(2)}%`,
+    is_up: coin.price_change_percentage_24h > 0,
+  });
+
+  const fetchCoin = async (method: "GET" | "POST" = "GET") => {
     if (!coinId) return;
 
     setLoading(true);
     setError(null);
-    setCoinData(null); // clear previous data to show loading placeholder
+    setCoinData(null);
 
     try {
-      const res = await fetch(`/api/coin/${coinId}`);
+      const res = await fetch(`/api/coin/${coinId}`, { method });
       const result = await res.json();
 
-      if (res.ok) {
-        setCoinData(result.coinData);
-        setChartData(result.sparkline || []);
-        setExtraDetails(result.coinData.extra || {});
-      } else {
+      if (!res.ok) {
         setError(result.error || "Failed to fetch coin data");
+        return;
       }
+
+      const coin: ParsedCoin = computeDerivedFields(result.coin_data);
+      setCoinData(coin);
+      setChartData(result.coin_data.extra.sparkline || []);
+
+      const extra = result.coin_data.extra || {};
+      setExtraDetails({
+        rank: extra.rank,
+        all_time_high: extra.all_time_high,
+        all_time_low: extra.all_time_low,
+        dev_score: extra.dev_score,
+        description: extra.description,
+        website: extra.website,
+        twitter: extra.twitter,
+        reddit: extra.reddit,
+      });
     } catch (err) {
       console.error(err);
       setError("Failed to fetch coin data. Please try again.");
@@ -87,42 +80,16 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
     }
   };
 
-  // Initial fetch whenever coinId changes
   useEffect(() => {
-    fetchCoinData();
+    fetchCoin("GET");
   }, [coinId]);
 
-  // Refresh handler (POST request)
-  const handleRefresh = async () => {
-    if (!coinId) return;
+  const handleRefresh = () => fetchCoin("POST");
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/coin/${coinId}`, { method: "POST" });
-      const result = await res.json();
-
-      if (res.ok) {
-        setCoinData(result.coinData);
-        setChartData(result.sparkline || []);
-        setExtraDetails(result.coinData.extra || {});
-      } else {
-        setError(result.error || "Failed to refresh coin data.");
-      }
-    } catch (err) {
-      console.error("Failed to refresh coin data", err);
-      setError("Failed to refresh coin data.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Compute last fetched and outdated status
-  const lastFetched = coinData?.extra?.lastFetched ? new Date(coinData.extra.lastFetched) : null;
-  const isOutdated = !lastFetched || Date.now() - lastFetched.getTime() > 5 * 60 * 1000; // 5 min
+  const lastFetched = coinData?.extra?.last_fetched ? new Date(coinData.extra.last_fetched) : null;
+  const isOutdated = !lastFetched || Date.now() - lastFetched.getTime() > 5 * 60 * 1000;
   const lastFetchedFormatted =
-    coinData?.extra?.lastFetchedFormatted ||
+    coinData?.extra?.last_fetched_formatted ||
     (lastFetched ? `${Math.floor((Date.now() - lastFetched.getTime()) / 1000)}s ago` : null);
 
   return (
@@ -145,15 +112,15 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
                 </SheetTitle>
                 {coinData && (
                   <div className="text-2xl font-bold mt-1 flex items-center gap-2">
-                    {coinData.price}
+                    {coinData.price_formatted}
                     <span
                       className={cn(
                         "text-sm font-semibold flex items-center gap-1",
-                        coinData.isUp ? "text-green-500" : "text-red-500"
+                        coinData.is_up ? "text-green-500" : "text-red-500"
                       )}
                     >
-                      {coinData.isUp ? <CircleArrowUp size={16} /> : <CircleArrowDown size={16} />}
-                      {coinData.change}
+                      {coinData.is_up ? <CircleArrowUp size={16} /> : <CircleArrowDown size={16} />}
+                      {coinData.change_formatted}
                     </span>
                   </div>
                 )}
@@ -175,7 +142,6 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
           </div>
         </SheetHeader>
 
-        {/* Main content */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <p className="text-gray-400 text-lg animate-pulse">Loading coin data...</p>

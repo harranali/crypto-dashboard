@@ -32,7 +32,7 @@ export function insertOrUpdateCoins(coins: Coin[]) {
     coins.forEach((coin) => {
       insertCoin.run({
         ...coin,
-        extra: coin.extra ? JSON.stringify(coin.extra) : JSON.stringify({}),
+        extra: coin.extra ? coin.extra : JSON.stringify({}),
         updated_at: coin.last_updated || new Date().toISOString(),
       });
     });

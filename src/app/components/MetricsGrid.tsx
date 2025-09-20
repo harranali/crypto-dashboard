@@ -1,10 +1,10 @@
 "use client";
 
 import { MetricCard } from "./MetricCard";
-import { CoinData } from "@/types";
+import type { ParsedCoin } from "@/types/coin";
 
 interface MetricsGridProps {
-  coinData: CoinData;
+  coinData: ParsedCoin;
 }
 
 export function MetricsGrid({ coinData }: MetricsGridProps) {
@@ -14,7 +14,7 @@ export function MetricsGrid({ coinData }: MetricsGridProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <MetricCard
           label="7d Change"
-          value={coinData.extra?.sevenDayChange}
+          value={coinData.extra?.seven_day_change}
           type="percent"
           tooltipContent="Percentage change in price over the last 7 days."
         />
@@ -26,7 +26,7 @@ export function MetricsGrid({ coinData }: MetricsGridProps) {
         />
         <MetricCard
           label="% to ATH"
-          value={coinData.extra?.percentToATH}
+          value={coinData.extra?.percent_to_ath}
           type="percent"
           tooltipContent="The percentage difference between the current price and the all-time high price."
         />
@@ -48,25 +48,25 @@ export function MetricsGrid({ coinData }: MetricsGridProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <MetricCard
           label="Market Cap"
-          value={coinData.marketCap}
+          value={coinData.market_cap}
           type="dollar"
           tooltipContent="The total value of a cryptocurrency's circulating supply."
         />
         <MetricCard
           label="Volume (24h)"
-          value={coinData.volume}
+          value={coinData.total_volume}
           type="dollar"
           tooltipContent="The total value of a cryptocurrency's trading volume in the last 24 hours."
         />
         <MetricCard
           label="P/MC"
-          value={coinData.extra?.priceToMarketCap}
+          value={coinData.extra?.price_to_market_cap}
           type="ratio"
           tooltipContent="Price to Market Cap Ratio: Compares the coin's price to its total market capitalization."
         />
         <MetricCard
           label="P/V"
-          value={coinData.extra?.priceToVolume}
+          value={coinData.extra?.price_to_volume}
           type="ratio"
           tooltipContent="Price to Volume Ratio: Compares the coin's price to its daily trading volume."
         />
@@ -76,19 +76,19 @@ export function MetricsGrid({ coinData }: MetricsGridProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <MetricCard
           label="Circulating Supply"
-          value={coinData.supply}
+          value={coinData.circulating_supply}
           type="string"
           tooltipContent="The number of coins that are currently available to the public."
         />
         <MetricCard
           label="Max Supply"
-          value={coinData.maxSupply}
+          value={coinData.max_supply}
           type="string"
           tooltipContent="The maximum number of coins that will ever exist in the lifetime of the cryptocurrency."
         />
         <MetricCard
           label="% Circulating"
-          value={coinData.extra?.circulatingPercent}
+          value={coinData.extra?.circulating_percent}
           type="percent"
           tooltipContent="The percentage of the total supply that is currently in circulation."
         />
