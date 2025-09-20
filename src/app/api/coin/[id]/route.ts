@@ -110,17 +110,18 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 }
 
 // POST: fetch from CoinGecko and update DB
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params;
+export async function POST(req: Request, context: { params: { id: string } }) {
+  const { params } = await context; // ✅ await context
+  const id = params.id;
 
+  try {
     const res = await fetch(
       `https://api.coingecko.com/api/v3/coins/${id}?localization=false&market_data=true&sparkline=true`
     );
     if (!res.ok) throw new Error("Failed to fetch CoinGecko data");
 
     const data = await res.json();
-    const extra = calculateExtra(data); // ✅ store raw ISO string only
+    const extra = calculateExtra(data);
 
     const coin = {
       id: data.id,
@@ -133,7 +134,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       circulating_supply: data.market_data?.circulating_supply || 0,
       max_supply: data.market_data?.max_supply || 0,
       image: data.image?.thumb || "",
-      extra, // store only raw data, no formatted
+      extra,
       last_updated: data.last_updated || new Date().toISOString(),
     };
 
@@ -151,7 +152,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         supply: coin.circulating_supply.toLocaleString(),
         maxSupply: coin.max_supply.toLocaleString(),
         image: coin.image,
-        extra, // ✅ lastFetched only
+        extra,
       },
       sparkline: extra.sparkline,
     });

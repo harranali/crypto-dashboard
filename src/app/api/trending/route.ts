@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
+import { Coin } from "@/types/coin";
 
 // Helper to create relative time
-function formatTimeAgo(dateStr?: string) {
+function formatTimeAgo(dateStr?: string): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -13,8 +14,24 @@ function formatTimeAgo(dateStr?: string) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+// CoinGecko market coin type
+interface CoinGeckoMarket {
+  id: string;
+  name: string;
+  symbol: string;
+  current_price: number;
+  price_change_percentage_24h: number;
+  market_cap: number;
+  total_volume: number;
+  circulating_supply: number;
+  max_supply: number;
+  image: string;
+  sparkline_in_7d?: unknown;
+  last_updated?: string;
+}
+
 // Map CoinGecko market coin to our Coin interface
-function mapCoinGeckoMarketToCoin(coin: any) {
+function mapCoinGeckoMarketToCoin(coin: CoinGeckoMarket): Coin {
   return {
     id: coin.id,
     name: coin.name,
@@ -26,10 +43,11 @@ function mapCoinGeckoMarketToCoin(coin: any) {
     circulating_supply: coin.circulating_supply,
     max_supply: coin.max_supply,
     image: coin.image,
-    extra: { sparkline_in_7d: coin.sparkline_in_7d || {} },
+    extra: JSON.stringify({ sparkline_in_7d: coin.sparkline_in_7d || {} }),
     last_updated: coin.last_updated || new Date().toISOString(),
   };
 }
+
 
 // GET: fetch trending coins from DB
 export async function GET() {
@@ -40,11 +58,11 @@ export async function GET() {
       JOIN coins c ON c.id = t.coin_id
       ORDER BY t.rank ASC
     `)
-    .all();
+    .all() as Array<Coin & { rank: number; updated_at: string }>;
 
   const coins = rows.map((r) => ({
     ...r,
-    extra: r.extra ? JSON.parse(r.extra) : {},
+    extra: r.extra ? JSON.parse(r.extra as string) : {},
     updated_at_formatted: formatTimeAgo(r.updated_at),
   }));
 
@@ -55,8 +73,8 @@ export async function GET() {
 export async function POST() {
   // Fetch trending coins IDs from CoinGecko
   const res = await fetch("https://api.coingecko.com/api/v3/search/trending");
-  const data = await res.json();
-  const trendingIds = data.coins.map((c: any) => c.item.id);
+  const data: { coins: { item: { id: string } }[] } = await res.json();
+  const trendingIds = data.coins.map((c) => c.item.id);
 
   if (!trendingIds.length) return NextResponse.json({ success: true, count: 0, coins: [] });
 
@@ -66,12 +84,12 @@ export async function POST() {
       ","
     )}&sparkline=true`
   );
-  const marketData = await marketRes.json();
+  const marketData: CoinGeckoMarket[] = await marketRes.json();
 
   // Reorder marketData to match trendingIds order
-  const orderedMarketData = trendingIds
-    .map((id) => marketData.find((c: any) => c.id === id))
-    .filter(Boolean)
+  const orderedMarketData: Coin[] = trendingIds
+    .map((id) => marketData.find((c) => c.id === id))
+    .filter((c): c is CoinGeckoMarket => Boolean(c))
     .map(mapCoinGeckoMarketToCoin);
 
   // Insert or update coins table
@@ -115,11 +133,11 @@ export async function POST() {
       JOIN coins c ON c.id = t.coin_id
       ORDER BY t.rank ASC
     `)
-    .all();
+    .all() as Array<Coin & { rank: number; updated_at: string }>;
 
   const coins = rows.map((r) => ({
     ...r,
-    extra: r.extra ? JSON.parse(r.extra) : {},
+    extra: r.extra ? JSON.parse(r.extra as string) : {},
     updated_at_formatted: formatTimeAgo(r.updated_at),
   }));
 

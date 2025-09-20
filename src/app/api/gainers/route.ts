@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
+import { Coin } from "@/types/coin";
 
 // Helper to create relative time
-function formatTimeAgo(dateStr?: string) {
+function formatTimeAgo(dateStr?: string): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -13,8 +14,24 @@ function formatTimeAgo(dateStr?: string) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+// CoinGecko market coin type
+interface CoinGeckoMarket {
+  id: string;
+  name: string;
+  symbol: string;
+  current_price: number;
+  price_change_percentage_24h: number;
+  market_cap: number;
+  total_volume: number;
+  circulating_supply: number;
+  max_supply: number;
+  image: string;
+  sparkline_in_7d?: unknown;
+  last_updated?: string;
+}
+
 // Map CoinGecko market coin to our Coin interface
-function mapCoinGeckoMarketToCoin(coin: any) {
+function mapCoinGeckoMarketToCoin(coin: CoinGeckoMarket): Coin {
   return {
     id: coin.id,
     name: coin.name,
@@ -26,9 +43,7 @@ function mapCoinGeckoMarketToCoin(coin: any) {
     circulating_supply: coin.circulating_supply,
     max_supply: coin.max_supply,
     image: coin.image,
-    extra: {
-      sparkline_in_7d: coin.sparkline_in_7d || {},
-    },
+    extra: JSON.stringify({ sparkline_in_7d: coin.sparkline_in_7d || {} }),
     last_updated: coin.last_updated || new Date().toISOString(),
   };
 }
@@ -42,11 +57,11 @@ export async function GET() {
       JOIN coins c ON c.id = t.coin_id
       ORDER BY t.rank ASC
     `)
-    .all();
+    .all() as Array<Coin & { rank: number; gainers_updated_at: string }>;
 
   const coins = rows.map((r) => ({
     ...r,
-    extra: r.extra ? JSON.parse(r.extra) : {},
+    extra: JSON.parse(r.extra),
     updated_at_formatted: formatTimeAgo(r.gainers_updated_at),
   }));
 
@@ -55,11 +70,10 @@ export async function GET() {
 
 // POST: fetch coins and update Top 10 gainers
 export async function POST() {
-  // Fetch top 100 coins from CoinGecko
   const res = await fetch(
     "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true"
   );
-  const data: any[] = await res.json();
+  const data: CoinGeckoMarket[] = await res.json();
 
   // Sort by 24h price change descending to get gainers
   const gainers = data
@@ -67,7 +81,7 @@ export async function POST() {
     .slice(0, 10);
 
   // Prepare coins for insert/update
-  const coins = gainers.map(mapCoinGeckoMarketToCoin);
+  const coins: Coin[] = gainers.map(mapCoinGeckoMarketToCoin);
 
   // Insert or update coins table
   insertOrUpdateCoins(coins);
@@ -112,11 +126,11 @@ export async function POST() {
       JOIN coins c ON c.id = t.coin_id
       ORDER BY t.rank ASC
     `)
-    .all();
+    .all() as Array<Coin & { rank: number; gainers_updated_at: string }>;
 
   const resultCoins = rows.map((r) => ({
     ...r,
-    extra: r.extra ? JSON.parse(r.extra) : {},
+    extra: JSON.parse(r.extra),
     updated_at_formatted: formatTimeAgo(r.gainers_updated_at),
   }));
 
