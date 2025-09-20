@@ -1,42 +1,134 @@
-// app/sections/MarketMetrics.tsx
 "use client";
 
-interface Metric {
-  title: string;
-  value: string;
-  trend?: string; // e.g., '+2.3%' or 'Stable'
-  trendType?: 'up' | 'down' | 'neutral';
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Type for global stats
+interface GlobalStats {
+  totalMarketCap: number;
+  marketCapChange24h: number;
+  totalVolume24h: number;
+  btcDominance: number;
+  ethDominance: number;
+  updatedAt: number;
 }
 
-const metrics: Metric[] = [
-  { title: "Total Market Cap", value: "$1.25T", trend: "+2.3%", trendType: "up" },
-  { title: "24h Volume", value: "$86B", trend: "-1.1%", trendType: "down" },
-  { title: "BTC Dominance", value: "52.8%", trend: "Stable", trendType: "neutral" },
-  { title: "ETH Dominance", value: "17.4%", trend: "Stable", trendType: "neutral" },
-];
+// Fetch function
+async function fetchGlobalStats(): Promise<GlobalStats | null> {
+  try {
+    const res = await fetch("https://api.coingecko.com/api/v3/global");
+    if (!res.ok) throw new Error("Failed to fetch global stats");
+    const data = await res.json();
 
-export default function MarketMetrics() {
+    return {
+      totalMarketCap: data.data.total_market_cap.usd,
+      marketCapChange24h: data.data.market_cap_change_percentage_24h_usd,
+      totalVolume24h: data.data.total_volume.usd,
+      btcDominance: data.data.market_cap_percentage.btc,
+      ethDominance: data.data.market_cap_percentage.eth,
+      updatedAt: data.data.updated_at,
+    };
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+// Component
+export default function GlobalMetrics() {
+  const [stats, setStats] = useState<GlobalStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchGlobalStats()
+      .then((data) => {
+        if (data) setStats(data);
+        else setError("Failed to fetch stats");
+      })
+      .catch(() => setError("Failed to fetch stats"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const formatUSD = (value: number) =>
+    `$${(value / 1_000_000_000).toFixed(2)}B`;
+
   return (
-    <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mb-8">
-      {metrics.map((metric) => (
-        <div key={metric.title} className="card p-4 metric">
-          <span className="text-gray-500 text-sm">{metric.title}</span>
-          <span className="value">{metric.value}</span>
-          {metric.trend && (
-            <span
-              className={`text-xs mt-1 ${
-                metric.trendType === "up"
-                  ? "trend-up"
-                  : metric.trendType === "down"
-                  ? "trend-down"
-                  : "text-gray-400"
-              }`}
-            >
-              {metric.trend}
-            </span>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* Total Market Cap */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Total Market Cap</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-6 w-24" />
+          ) : error || !stats ? (
+            <span className="text-red-500">Error</span>
+          ) : (
+            <div>
+              <span className="font-bold">{formatUSD(stats.totalMarketCap)}</span>
+              <span
+                className={`ml-2 font-medium ${
+                  stats.marketCapChange24h >= 0 ? "text-green-500" : "text-red-500"
+                }`}
+              >
+                {stats.marketCapChange24h >= 0 ? "+" : ""}
+                {stats.marketCapChange24h.toFixed(2)}%
+              </span>
+            </div>
           )}
-        </div>
-      ))}
-    </section>
+        </CardContent>
+      </Card>
+
+      {/* 24h Volume */}
+      <Card>
+        <CardHeader>
+          <CardTitle>24h Volume</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-6 w-24" />
+          ) : error || !stats ? (
+            <span className="text-red-500">Error</span>
+          ) : (
+            <span className="font-bold">{formatUSD(stats.totalVolume24h)}</span>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* BTC Dominance */}
+      <Card>
+        <CardHeader>
+          <CardTitle>BTC Dominance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-6 w-16" />
+          ) : error || !stats ? (
+            <span className="text-red-500">Error</span>
+          ) : (
+            <span className="font-bold">{stats.btcDominance.toFixed(1)}%</span>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ETH Dominance */}
+      <Card>
+        <CardHeader>
+          <CardTitle>ETH Dominance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-6 w-16" />
+          ) : error || !stats ? (
+            <span className="text-red-500">Error</span>
+          ) : (
+            <span className="font-bold">{stats.ethDominance.toFixed(1)}%</span>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

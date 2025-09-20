@@ -1,6 +1,4 @@
 import MetricsSection from "@/app/sections/MetricsSection";
-import TopCoinsSection from "@/app/sections/TopCoinsSection";
-
 import CoinTabsSection from "@/app/sections/CoinTabsSection";
 
 // Dummy data
@@ -14,7 +12,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 p-4 md:p-6">
       <MetricsSection />
-      <TopCoinsSection />
       
       <CoinTabsSection
         top100={top100}

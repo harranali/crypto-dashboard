@@ -99,47 +99,64 @@ export default function CoinTabsSection() {
     <Card className="p-4">
       {/* Tabs */}
       <div className="flex items-center justify-between border-b pb-2 mb-2">
-        <div className="flex space-x-4">
-          {(Object.keys(TAB_LABELS) as TabType[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`relative py-1 px-2 text-sm font-medium transition ${
-                activeTab === tab
-                  ? "text-blue-600 after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-blue-600"
-                  : "text-gray-600 hover:text-blue-600"
-              }`}
-            >
-              {TAB_LABELS[tab]}
-              {activeTab === tab && tabData[tab].coins.length > 0 && tabData[tab].coins[0].updated_at_formatted && (
-                <span className="ml-2 text-xs text-gray-400">
-                  {tabData[tab].coins[0].updated_at_formatted}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+      <div className="flex space-x-4">
+        {(Object.keys(TAB_LABELS) as TabType[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`relative py-2 px-4 text-lg font-semibold rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+              activeTab === tab
+                ? "text-blue-600 bg-blue-50 after:absolute after:-bottom-1 after:left-0 after:w-full after:h-1 after:rounded after:bg-blue-600"
+                : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+            }`}
+          >
+            {TAB_LABELS[tab]}
+            {activeTab === tab && tabData[tab].coins.length > 0 && tabData[tab].coins[0].updated_at_formatted && (
+              <span className="ml-2 text-xs text-gray-400">
+                {tabData[tab].coins[0].updated_at_formatted}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+
 
         {/* Refresh */}
         <button
           onClick={() => refreshTabCoins(activeTab)}
           disabled={tabData[activeTab].refreshing}
-          className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+          title="Refresh tab data"
         >
+          {tabData[activeTab].refreshing && (
+            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" strokeWidth="4" stroke="currentColor"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+          )}
           {tabData[activeTab].refreshing ? "Refreshing..." : "Refresh"}
         </button>
+
       </div>
 
       {/* Search */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center mb-2">
         <input
           type="text"
           placeholder="Search..."
-          className="border px-3 py-1 rounded-lg text-sm w-40 focus:ring focus:ring-blue-200 focus:border-blue-500 transition-all"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 border px-3 py-2 rounded-lg text-sm md:text-base focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all"
+          aria-label="Search coins"
         />
+        {search && (
+          <button onClick={() => setSearch("")} className="ml-2 text-gray-500 hover:text-gray-700 transition">
+            ✕
+          </button>
+        )}
       </div>
+
 
       {/* Error */}
       {tabData[activeTab].error && (
