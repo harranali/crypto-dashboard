@@ -8,16 +8,39 @@ interface MetricCardProps {
   label: string;
   value?: string | number | null;
   tooltipContent?: string;
+  type?: "number" | "percent" | "dollar" | "string" | "ratio"; // Type flag
 }
 
-export function MetricCard({ label, value, tooltipContent }: MetricCardProps) {
-  // Convert value to number if possible
-  const numericValue = typeof value === "number" ? value : parseFloat((value || "").toString().replace("%", ""));
-  const isNumber = !isNaN(numericValue);
+export function MetricCard({ label, value, tooltipContent, type = "string" }: MetricCardProps) {
+  let displayValue: string;
+  let showArrow = false;
+  let positive = false;
 
-  const displayValue = isNumber ? (value?.toString() || "0") : "N/A";
-  const showArrow = isNumber && numericValue !== 0;
-  const positive = numericValue > 0;
+  if (type === "string") {
+    displayValue = value?.toString() || "N/A";
+  } else {
+    const numericValue = typeof value === "number"
+      ? value
+      : parseFloat((value || "").toString().replace("%", "").replace("$", "").replace(/,/g, ""));
+    const isNumber = !isNaN(numericValue);
+
+    displayValue = isNumber
+      ? type === "percent"
+        ? numericValue.toFixed(2) + "%"
+        : type === "dollar"
+        ? `$${numericValue.toLocaleString()}`
+        : type === "ratio"
+        ? numericValue.toFixed(6)
+        : numericValue.toLocaleString()
+      : "N/A";
+
+    showArrow = isNumber && numericValue !== 0;
+    positive = numericValue > 0;
+  }
+
+  // Use stronger green
+  const greenClass = "text-green-700";
+  const redClass = "text-red-600";
 
   return (
     <div className="relative p-4 bg-white shadow-sm rounded-lg flex flex-col text-gray-700 hover:shadow-md transition">
@@ -39,11 +62,11 @@ export function MetricCard({ label, value, tooltipContent }: MetricCardProps) {
 
       <div className="flex items-center gap-2">
         {showArrow && (
-          <span className={cn(positive ? "text-green-500" : "text-red-500")}>
+          <span className={cn(positive ? greenClass : redClass)}>
             {positive ? <CircleArrowUp size={16} /> : <CircleArrowDown size={16} />}
           </span>
         )}
-        <span className={cn("text-lg font-bold", showArrow ? (positive ? "text-green-500" : "text-red-500") : "")}>
+        <span className={cn("text-lg font-bold", showArrow ? (positive ? greenClass : redClass) : "")}>
           {displayValue}
         </span>
       </div>

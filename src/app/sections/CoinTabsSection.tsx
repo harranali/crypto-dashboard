@@ -201,10 +201,10 @@ export default function CoinTabsSection() {
       {/* Coin Sheet */}
       {selectedCoin && (
         <CoinSheet
-          coinName={selectedCoin.name}
-          coinData={selectedCoin}
-          setCoin={(coinName) => !coinName && setSelectedCoin(null)}
-        />
+        coinName={selectedCoin.name}
+        coinId={selectedCoin.id} // pass id instead of full coinData
+        setCoin={(coinName) => !coinName && setSelectedCoin(null)}
+      />
       )}
     </Card>
   );
