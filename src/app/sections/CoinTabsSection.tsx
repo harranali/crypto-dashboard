@@ -1,0 +1,211 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import CoinSheet from "@/app/components/CoinSheet";
+
+interface Coin {
+  id: string;
+  name: string;
+  symbol: string;
+  current_price: number;
+  price_change_percentage_24h: number;
+  market_cap: number;
+  total_volume: number;
+  image: string;
+  extra?: {
+    sevenDayChange?: number;
+  };
+  updated_at_formatted?: string;
+}
+
+type TabType = "top100" | "trending" | "gainers" | "losers";
+
+const TAB_LABELS: Record<TabType, string> = {
+  top100: "Top 100",
+  trending: "Trending",
+  gainers: "Gainers",
+  losers: "Losers",
+};
+
+export default function CoinTabsSection() {
+  const [activeTab, setActiveTab] = useState<TabType>("top100");
+  const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
+  const [search, setSearch] = useState("");
+
+  const initialTabState = {
+    coins: [] as Coin[],
+    loading: true,
+    refreshing: false,
+    error: null as string | null,
+  };
+
+  const [tabData, setTabData] = useState<Record<TabType, typeof initialTabState>>({
+    top100: { ...initialTabState },
+    trending: { ...initialTabState },
+    gainers: { ...initialTabState },
+    losers: { ...initialTabState },
+  });
+
+  const fetchTabCoins = async (tab: TabType) => {
+    setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: true, error: null } }));
+    try {
+      const res = await fetch(`/api/${tab}`);
+      if (!res.ok) throw new Error("Failed to fetch coins");
+      const data = await res.json();
+      setTabData((prev) => ({
+        ...prev,
+        [tab]: { ...prev[tab], coins: data.coins || [] },
+      }));
+    } catch (err: any) {
+      console.error(err);
+      setTabData((prev) => ({
+        ...prev,
+        [tab]: { ...prev[tab], error: err.message || "Failed to fetch coins" },
+      }));
+    } finally {
+      setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: false } }));
+    }
+  };
+
+  const refreshTabCoins = async (tab: TabType) => {
+    setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], refreshing: true, error: null } }));
+    try {
+      const res = await fetch(`/api/${tab}`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to refresh data");
+      await fetchTabCoins(tab);
+    } catch (err: any) {
+      console.error(err);
+      setTabData((prev) => ({
+        ...prev,
+        [tab]: { ...prev[tab], error: err.message || "Failed to refresh data" },
+      }));
+    } finally {
+      setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], refreshing: false } }));
+    }
+  };
+
+  useEffect(() => {
+    fetchTabCoins(activeTab);
+  }, [activeTab]);
+
+  const filteredCoins = tabData[activeTab].coins.filter(
+    (coin) =>
+      coin.name.toLowerCase().includes(search.toLowerCase()) ||
+      coin.symbol.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Card className="p-4">
+      {/* Tabs */}
+      <div className="flex items-center justify-between border-b pb-2 mb-2">
+        <div className="flex space-x-4">
+          {(Object.keys(TAB_LABELS) as TabType[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`relative py-1 px-2 text-sm font-medium transition ${
+                activeTab === tab
+                  ? "text-blue-600 after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-blue-600"
+                  : "text-gray-600 hover:text-blue-600"
+              }`}
+            >
+              {TAB_LABELS[tab]}
+              {activeTab === tab && tabData[tab].coins.length > 0 && tabData[tab].coins[0].updated_at_formatted && (
+                <span className="ml-2 text-xs text-gray-400">
+                  {tabData[tab].coins[0].updated_at_formatted}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Refresh */}
+        <button
+          onClick={() => refreshTabCoins(activeTab)}
+          disabled={tabData[activeTab].refreshing}
+          className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+        >
+          {tabData[activeTab].refreshing ? "Refreshing..." : "Refresh"}
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center justify-between mb-2">
+        <input
+          type="text"
+          placeholder="Search..."
+          className="border px-3 py-1 rounded-lg text-sm w-40 focus:ring focus:ring-blue-200 focus:border-blue-500 transition-all"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Error */}
+      {tabData[activeTab].error && (
+        <p className="text-red-500 text-sm mb-2">{tabData[activeTab].error}</p>
+      )}
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        {tabData[activeTab].loading ? (
+          <p className="text-center py-4">Loading...</p>
+        ) : (
+          <table className="w-full text-left min-w-[700px]">
+            <thead className="text-gray-500 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="py-3 px-4">#</th>
+                <th className="py-3 px-4">Coin</th>
+                <th className="py-3 px-4">Price</th>
+                <th className="py-3 px-4">24h %</th>
+                <th className="py-3 px-4">Market Cap</th>
+                <th className="py-3 px-4 hidden sm:table-cell">24h Volume</th>
+                <th className="py-3 px-4 hidden sm:table-cell">7d %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCoins.map((coin, idx) => (
+                <tr
+                  key={coin.id}
+                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => setSelectedCoin(coin)}
+                >
+                  <td className="py-3 px-4 font-medium">{idx + 1}</td>
+                  <td className="py-3 px-4 flex items-center space-x-2">
+                    <img src={coin.image} alt={coin.name} className="w-5 h-5 rounded-full" />
+                    <span className="font-medium">{coin.name}</span>
+                    <span className="text-gray-400 text-xs">{coin.symbol.toUpperCase()}</span>
+                  </td>
+                  <td className="py-3 px-4 font-semibold">${coin.current_price?.toLocaleString()}</td>
+                  <td
+                    className={`py-3 px-4 font-medium ${
+                      coin.price_change_percentage_24h > 0 ? "text-green-500" : "text-red-500"
+                    }`}
+                  >
+                    {coin.price_change_percentage_24h?.toFixed(2)}%
+                  </td>
+                  <td className="py-3 px-4 text-gray-600">${coin.market_cap?.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-gray-600 hidden sm:table-cell">
+                    ${coin.total_volume?.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 font-medium hidden sm:table-cell">
+                    {coin.extra?.sevenDayChange?.toFixed(2)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Coin Sheet */}
+      {selectedCoin && (
+        <CoinSheet
+          coinName={selectedCoin.name}
+          coinData={selectedCoin}
+          setCoin={(coinName) => !coinName && setSelectedCoin(null)}
+        />
+      )}
+    </Card>
+  );
+}
