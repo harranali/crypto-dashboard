@@ -42,4 +42,5 @@ export interface CoinExtra {
   twitter?: string;
   reddit?: string;
   dev_score?: string;
+  last_fetched_formatted?: string
 }
