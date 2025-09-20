@@ -72,18 +72,28 @@ export async function POST() {
   // Insert or update coins table
   insertOrUpdateCoins(coins);
 
-  // Update gainers table
-  const insertGainers = db.prepare(`
-    INSERT INTO gainers (coin_id, rank, updated_at)
-    VALUES (@coin_id, @rank, @updated_at)
-    ON CONFLICT(coin_id) DO UPDATE SET
-      rank=excluded.rank,
-      updated_at=excluded.updated_at
-  `);
+  const now = new Date().toISOString();
 
-  const txn = db.transaction((coins: typeof gainers) => {
-    const now = new Date().toISOString();
-    coins.forEach((coin: any, idx: number) => {
+  const txn = db.transaction(() => {
+    const gainerIds = coins.map((c) => c.id);
+
+    // 1. Delete any coins from gainers table not in the latest top 10
+    if (gainerIds.length) {
+      db.prepare(
+        `DELETE FROM gainers WHERE coin_id NOT IN (${gainerIds.map(() => "?").join(",")})`
+      ).run(...gainerIds);
+    }
+
+    // 2. Insert or update gainers table with rank
+    const insertGainers = db.prepare(`
+      INSERT INTO gainers (coin_id, rank, updated_at)
+      VALUES (@coin_id, @rank, @updated_at)
+      ON CONFLICT(coin_id) DO UPDATE SET
+        rank=excluded.rank,
+        updated_at=excluded.updated_at
+    `);
+
+    coins.forEach((coin, idx) => {
       insertGainers.run({
         coin_id: coin.id,
         rank: idx + 1,
@@ -92,7 +102,7 @@ export async function POST() {
     });
   });
 
-  txn(coins);
+  txn();
 
   // Fetch updated gainers with formatted timestamp
   const rows = db
@@ -110,5 +120,5 @@ export async function POST() {
     updated_at_formatted: formatTimeAgo(r.gainers_updated_at),
   }));
 
-  return NextResponse.json({ success: true, count: gainers.length, coins: resultCoins });
+  return NextResponse.json({ success: true, count: coins.length, coins: resultCoins });
 }

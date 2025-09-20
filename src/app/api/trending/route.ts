@@ -77,18 +77,26 @@ export async function POST() {
   // Insert or update coins table
   insertOrUpdateCoins(orderedMarketData);
 
-  // Update trending table
-  const insertTrending = db.prepare(`
-    INSERT INTO trending (coin_id, rank, updated_at)
-    VALUES (@coin_id, @rank, @updated_at)
-    ON CONFLICT(coin_id) DO UPDATE SET
-      rank=excluded.rank,
-      updated_at=excluded.updated_at
-  `);
-
   const now = new Date().toISOString();
-  const txn = db.transaction((coins: typeof orderedMarketData) => {
-    coins.forEach((coin, idx) => {
+
+  const txn = db.transaction(() => {
+    // 1. Delete trending entries not in the latest trendingIds
+    if (trendingIds.length) {
+      db.prepare(
+        `DELETE FROM trending WHERE coin_id NOT IN (${trendingIds.map(() => "?").join(",")})`
+      ).run(...trendingIds);
+    }
+
+    // 2. Insert or update trending ranks
+    const insertTrending = db.prepare(`
+      INSERT INTO trending (coin_id, rank, updated_at)
+      VALUES (@coin_id, @rank, @updated_at)
+      ON CONFLICT(coin_id) DO UPDATE SET
+        rank=excluded.rank,
+        updated_at=excluded.updated_at
+    `);
+
+    orderedMarketData.forEach((coin, idx) => {
       insertTrending.run({
         coin_id: coin.id,
         rank: idx + 1,
@@ -97,7 +105,7 @@ export async function POST() {
     });
   });
 
-  txn(orderedMarketData);
+  txn();
 
   // Fetch updated trending coins with formatted timestamp
   const rows = db

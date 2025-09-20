@@ -71,26 +71,35 @@ export async function POST() {
   // Insert or update coins table
   insertOrUpdateCoins(coins);
 
-  // Update top100 ranks
-  const insertTop100 = db.prepare(`
-    INSERT INTO top100 (coin_id, rank, updated_at)
-    VALUES (@coin_id, @rank, @updated_at)
-    ON CONFLICT(coin_id) DO UPDATE SET
-      rank=excluded.rank,
-      updated_at=excluded.updated_at
-  `);
+  // Extract top100 coin IDs from response
+  const top100Ids = coins.map((coin) => coin.id);
 
-  const txn = db.transaction((coins: any[]) => {
-    coins.forEach((coin: any, idx: number) => {
+  const now = new Date().toISOString();
+
+  // Begin transaction
+  const txn = db.transaction(() => {
+    // 1. Delete top100 entries not in the latest top100Ids
+    db.prepare(`DELETE FROM top100 WHERE coin_id NOT IN (${top100Ids.map(() => "?").join(",")})`).run(...top100Ids);
+
+    // 2. Insert or update top100 ranks
+    const insertTop100 = db.prepare(`
+      INSERT INTO top100 (coin_id, rank, updated_at)
+      VALUES (@coin_id, @rank, @updated_at)
+      ON CONFLICT(coin_id) DO UPDATE SET
+        rank=excluded.rank,
+        updated_at=excluded.updated_at
+    `);
+
+    coins.forEach((coin, idx) => {
       insertTop100.run({
         coin_id: coin.id,
         rank: idx + 1,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       });
     });
   });
 
-  txn(coins);
+  txn();
 
   // Fetch updated top100 coins with formatted timestamp
   const rows = db
