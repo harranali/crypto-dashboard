@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
 import db from "@/lib/db";
+import type { Coin } from "@/types/coin";
 
 // Helper to calculate extra metrics safely
 function calculateExtra(data: any) {
@@ -121,9 +122,10 @@ export async function POST(req: Request, context: { params: { id: string } }) {
     if (!res.ok) throw new Error("Failed to fetch CoinGecko data");
 
     const data = await res.json();
-    const extra = calculateExtra(data);
+    const extraObj = calculateExtra(data); // this is an object
+    const extraStr = JSON.stringify(extraObj); // convert to string for DB
 
-    const coin = {
+    const coin: Coin = {
       id: data.id,
       name: data.name,
       symbol: data.symbol,
@@ -134,7 +136,7 @@ export async function POST(req: Request, context: { params: { id: string } }) {
       circulating_supply: data.market_data?.circulating_supply || 0,
       max_supply: data.market_data?.max_supply || 0,
       image: data.image?.thumb || "",
-      extra,
+      extra: extraStr,
       last_updated: data.last_updated || new Date().toISOString(),
     };
 
@@ -152,9 +154,9 @@ export async function POST(req: Request, context: { params: { id: string } }) {
         supply: coin.circulating_supply.toLocaleString(),
         maxSupply: coin.max_supply.toLocaleString(),
         image: coin.image,
-        extra,
+        extra: extraObj,
       },
-      sparkline: extra.sparkline,
+      sparkline: extraObj.sparkline,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
