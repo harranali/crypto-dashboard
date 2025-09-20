@@ -1,4 +1,4 @@
-import MetricsSection from "@/app/sections/MetricsSection";
+import GloblMetricsSection from "@/app/sections/GloblMetricsSection";
 import CoinTabsSection from "@/app/sections/CoinTabsSection";
 
 // Dummy data
@@ -11,7 +11,7 @@ const losers = [/* array of coins */];
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 p-4 md:p-6">
-      <MetricsSection />
+      <GloblMetricsSection />
       
       <CoinTabsSection
         top100={top100}

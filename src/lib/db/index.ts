@@ -61,4 +61,19 @@ db.exec(`
   )
 `);
 
+// global metrics
+db.exec(`
+    CREATE TABLE IF NOT EXISTS global_metrics (
+    id INTEGER PRIMARY KEY,
+    total_market_cap REAL,
+    total_volume REAL,
+    btc_dominance REAL,
+    eth_dominance REAL,
+    market_cap_change_24h REAL,
+    extra TEXT,
+    last_updated TEXT,
+    last_fetched TEXT
+  )
+`);
+
 export default db;

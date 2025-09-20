@@ -113,7 +113,7 @@ export default function CoinTabsSection() {
             {TAB_LABELS[tab]}
             {activeTab === tab && tabData[tab].coins.length > 0 && tabData[tab].coins[0].updated_at_formatted && (
               <span className="ml-2 text-xs text-gray-400">
-                {tabData[tab].coins[0].updated_at_formatted}
+                updated {tabData[tab].coins[0].updated_at_formatted}
               </span>
             )}
           </button>
