@@ -22,7 +22,7 @@ export function AboutSection({ extraDetails }: AboutSectionProps) {
   const [showFullDescription, setShowFullDescription] = useState(false);
 
   const truncatedDescription =
-    extraDetails.description?.length > 200
+    extraDetails.description?.length && extraDetails.description.length > 200
       ? extraDetails.description.slice(0, 200) + "..."
       : extraDetails.description;
 
@@ -68,7 +68,7 @@ export function AboutSection({ extraDetails }: AboutSectionProps) {
       {extraDetails.description && (
         <div className="text-sm text-gray-600">
           <p>{descriptionToDisplay}</p>
-          {extraDetails.description.length > 200 && (
+          {extraDetails.description?.length > 200 && (
             <button
               onClick={() => setShowFullDescription(!showFullDescription)}
               className="text-blue-500 underline text-sm mt-1"
