@@ -30,6 +30,17 @@ A **real-time cryptocurrency dashboard** built with **Next.js 15** that displays
 
 ---
 
+## Screenshots
+
+### Dashboard Overview  
+![Dashboard Overview](./screenshots/1.png)
+
+### Coin Sheet Modal  
+![Coin Sheet Modal](./screenshots/2.png)
+
+![Coin Sheet Modal](./screenshots/3.png)
+
+
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React, TypeScript
