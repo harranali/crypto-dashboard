@@ -9,6 +9,7 @@ import { AboutSection } from "@/app/components/AboutSection";
 import { MetricsGrid } from "@/app/components/MetricsGrid";
 import { Button } from "@/components/ui/button";
 import type { ParsedCoin } from "@/types/coin";
+import clsx from "clsx";
 
 interface ExtraDetails {
   all_time_high?: string;
@@ -127,17 +128,18 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-1">
-            <Button 
-              variant="outline" 
-              size="sm"  // instead of "icon"
-              onClick={handleRefresh} 
-              disabled={loading}
-              className="flex items-center gap-1 px-3"
-            >
-              <RefreshCw className={cn("h-5 w-5", loading && "animate-spin text-blue-500")} />
-              Refresh
-            </Button>
+            <div className="flex flex-col items-end gap-1 **ml-auto**">
+              <Button
+                onClick={handleRefresh}
+                disabled={loading}
+                className={clsx(
+                  "flex items-center gap-1 px-3 bg-black text-white hover:bg-gray-800",
+                  loading && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <RefreshCw className={clsx("h-5 w-5", loading && "animate-spin")} />
+                Refresh
+              </Button>
               {!loading && (
                 isOutdated ? (
                   <span className="text-red-500 text-xs">

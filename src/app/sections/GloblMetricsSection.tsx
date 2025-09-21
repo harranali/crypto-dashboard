@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUp, ArrowDown, RefreshCw } from "lucide-react"; // Import new icons
+import { ArrowUp, ArrowDown, RefreshCw } from "lucide-react";
 
 interface GlobalMetricsData {
   total_market_cap: number;
   total_volume: number;
   btc_dominance: number;
-    eth_dominance: number;
+  eth_dominance: number;
   market_cap_change_24h: number;
   last_updated: string;
   last_updated_formatted: string;
@@ -21,12 +21,18 @@ export default function GlobalMetrics() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/global-metrics");
+      const res = await fetch("/api/global-metrics", {
+        method: forceRefresh ? "POST" : "GET", // Use POST for refresh, GET for initial load
+      });
+
       if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error("Rate limit exceeded. Please try again after 30-60 seconds.");
+        }
         throw new Error("Failed to fetch global metrics. Please try again.");
       }
       const data = await res.json();
@@ -39,8 +45,12 @@ export default function GlobalMetrics() {
   };
 
   useEffect(() => {
-    fetchMetrics();
+    fetchMetrics(); // Initial fetch on component mount
   }, []);
+
+  const handleRefresh = () => {
+    fetchMetrics(true); // Call fetch function with forceRefresh = true
+  };
 
   const formatNumber = (num?: number) => {
     if (num == null) return "-";
@@ -73,7 +83,7 @@ export default function GlobalMetrics() {
     <Card className="p-6 mb-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold">Global Metrics</h2>
-        <Button onClick={fetchMetrics} disabled={loading} aria-label="Refresh global metrics">
+        <Button onClick={handleRefresh} disabled={loading} aria-label="Refresh global metrics">
           {loading ? (
             <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
           ) : (
@@ -83,12 +93,12 @@ export default function GlobalMetrics() {
         </Button>
       </div>
 
-      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+      {error && <p className="text-[--color-brand-red] text-sm mb-4">{error}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
         {/* Total Market Cap */}
         <div>
-          <p className="text-gray-500">Total Market Cap</p>
+          <p className="text-[--color-brand-gray]">Total Market Cap</p>
           {showSkeleton ? (
             <Skeleton className="h-8 w-32" />
           ) : (
@@ -100,9 +110,9 @@ export default function GlobalMetrics() {
                 className={`flex items-center gap-1 text-sm mt-1 ${
                   metrics?.market_cap_change_24h != null
                     ? metrics.market_cap_change_24h >= 0
-                      ? "text-green-500"
-                      : "text-red-500"
-                    : "text-gray-400"
+                      ? "text-[--color-brand-green]"
+                      : "text-[--color-brand-red]"
+                    : "text-[--color-brand-gray]"
                 }`}
               >
                 {ChangeIcon}
@@ -114,7 +124,7 @@ export default function GlobalMetrics() {
 
         {/* 24h Volume */}
         <div>
-          <p className="text-gray-500">24h Volume</p>
+          <p className="text-[--color-brand-gray]">24h Volume</p>
           {showSkeleton ? (
             <Skeleton className="h-8 w-32" />
           ) : (
@@ -126,7 +136,7 @@ export default function GlobalMetrics() {
 
         {/* BTC Dominance */}
         <div>
-          <p className="text-gray-500">BTC Dominance</p>
+          <p className="text-[--color-brand-gray]">BTC Dominance</p>
           {showSkeleton ? (
             <Skeleton className="h-8 w-16" />
           ) : (
@@ -138,7 +148,7 @@ export default function GlobalMetrics() {
 
         {/* ETH Dominance */}
         <div>
-          <p className="text-gray-500">ETH Dominance</p>
+          <p className="text-[--color-brand-gray]">ETH Dominance</p>
           {showSkeleton ? (
             <Skeleton className="h-8 w-16" />
           ) : (
@@ -150,7 +160,7 @@ export default function GlobalMetrics() {
       </div>
 
       {!showSkeleton && metrics && (
-        <p className="text-xs text-gray-400 mt-6 text-right">
+        <p className="text-xs text-[--color-brand-gray] mt-6 text-right">
           Last updated: {metrics.last_updated_formatted}
         </p>
       )}
