@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
 import db from "@/lib/db";
 import type { Coin } from "@/types/coin";
@@ -16,8 +16,11 @@ function format_time_ago(dateStr?: string) {
 }
 
 // GET: fetch details from cached coins table
-export async function GET(req: Request, context: { params: { id: string } }) {
-  const { id } = await context.params;
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> } // 👈 must be Promise
+) {
+  const { id } = await context.params; // 👈 now you need await
 
   const row = db.prepare(`SELECT * FROM coins WHERE id = ?`).get(id);
 
@@ -27,6 +30,7 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 
   const extra = row.extra ? JSON.parse(row.extra) : {};
   const last_fetched_formatted = extra.last_fetched ? format_time_ago(extra.last_fetched) : null;
+
   return NextResponse.json({
     coin_data: {
       id: row.id,
@@ -39,25 +43,31 @@ export async function GET(req: Request, context: { params: { id: string } }) {
       circulating_supply: row.circulating_supply,
       max_supply: row.max_supply,
       image: row.image,
-      extra: extra,
+      extra,
       last_updated: row.last_updated,
+      last_fetched_formatted,
     },
   });
 }
 
 // POST: fetch from CoinGecko and update DB
-export async function POST(req: Request, context: { params: { id: string } }) {
-  const { id } = await context.params;
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> } // 👈 must be Promise
+) {
+  const { id } = await context.params; // 👈 await again
 
   try {
     const res = await fetch(
       `https://api.coingecko.com/api/v3/coins/${id}?localization=false&market_data=true&sparkline=true`
     );
-    if (!res.ok) throw new Error("API rate limit exceeded. Please try again in 30-60 seconds.");
+    if (!res.ok) {
+      throw new Error("API rate limit exceeded. Please try again in 30-60 seconds.");
+    }
 
     const data = await res.json();
-    const extra_obj = calculateExtra(data); // object in snake_case
-    const extra_str = JSON.stringify(extra_obj); // store in DB
+    const extra_obj = calculateExtra(data);
+    const extra_str = JSON.stringify(extra_obj);
 
     const coin: Coin = {
       id: data.id,
@@ -78,11 +88,10 @@ export async function POST(req: Request, context: { params: { id: string } }) {
 
     return NextResponse.json({
       coin_data: {
-        ...coin, 
+        ...coin,
         extra: extra_obj,
-      }
+      },
     });
-
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
