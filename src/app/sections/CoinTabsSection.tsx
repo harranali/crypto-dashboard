@@ -76,7 +76,10 @@ export default function CoinTabsSection() {
     setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], refreshing: true, error: null } }));
     try {
       const res = await fetch(`/api/${tab}`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to refresh data");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to refresh data");
+      }
       await fetchTabCoins(tab);
     } catch (err: any) {
       console.error(err);
@@ -115,19 +118,13 @@ export default function CoinTabsSection() {
     <Card className="p-4">
       {/* Tabs and Refresh */}
       <div className="flex items-center justify-between border-b pb-2 mb-2">
-        {/*
-          Changes start here
-          Added flex-wrap to allow tabs to wrap to the next line on smaller screens.
-        */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {(Object.keys(TAB_LABELS) as TabType[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={clsx(
-                // Base styles for all screen sizes
                 "relative py-1 px-2 text-base font-semibold rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-[--color-ring]",
-                // Larger styles for screens >= 640px (sm breakpoint)
                 "sm:py-2 sm:px-4 sm:text-lg",
                 {
                   "font-bold after:absolute after:-bottom-1 after:left-0 after:w-full after:h-1 after:rounded after:bg-black":
@@ -145,23 +142,27 @@ export default function CoinTabsSection() {
             </button>
           ))}
         </div>
-        {/*
-          Changes end here
-        */}
 
-        {/* Refresh */}
-        <Button
-          onClick={() => refreshTabCoins(activeTab)}
-          disabled={tabData[activeTab].refreshing}
-          aria-label="Refresh coin data"
-        >
-          {tabData[activeTab].refreshing ? (
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
+        {/* Refresh button and error message container */}
+        <div className="flex flex-col items-end">
+          <Button
+            onClick={() => refreshTabCoins(activeTab)}
+            disabled={tabData[activeTab].refreshing}
+            aria-label="Refresh coin data"
+          >
+            {tabData[activeTab].refreshing ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            {tabData[activeTab].refreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+          {tabData[activeTab].error && (
+            <p className="text-red-500 text-xs mt-2 text-right w-full">
+              {tabData[activeTab].error}
+            </p>
           )}
-          {tabData[activeTab].refreshing ? "Refreshing..." : "Refresh"}
-        </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -180,11 +181,6 @@ export default function CoinTabsSection() {
           </button>
         )}
       </div>
-
-      {/* Error */}
-      {tabData[activeTab].error && (
-        <p className="text-[--color-destructive] text-sm mb-2">{tabData[activeTab].error}</p>
-      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
