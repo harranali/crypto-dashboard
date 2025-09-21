@@ -22,7 +22,7 @@ export async function GET(
 ) {
   const { id } = await context.params; // 👈 now you need await
 
-  const row = db.prepare(`SELECT * FROM coins WHERE id = ?`).get(id);
+  const row = db.prepare(`SELECT * FROM coins WHERE id = ?`).get(id) as Coin | undefined;;
 
   if (!row) {
     return NextResponse.json({ error: "Coin not found in cache" }, { status: 404 });
@@ -92,7 +92,8 @@ export async function POST(
         extra: extra_obj,
       },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

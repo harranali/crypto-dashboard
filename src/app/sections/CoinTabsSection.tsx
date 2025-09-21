@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import CoinSheet from "@/app/components/CoinSheet";
@@ -61,11 +62,12 @@ export default function CoinTabsSection() {
         ...prev,
         [tab]: { ...prev[tab], coins: data.coins || [] },
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch coins";
       setTabData((prev) => ({
         ...prev,
-        [tab]: { ...prev[tab], error: err.message || "Failed to fetch coins" },
+        [tab]: { ...prev[tab], error: errorMessage },
       }));
     } finally {
       setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: false } }));
@@ -81,11 +83,12 @@ export default function CoinTabsSection() {
         throw new Error(errorData.error || "Failed to refresh data");
       }
       await fetchTabCoins(tab);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to refresh data";
       setTabData((prev) => ({
         ...prev,
-        [tab]: { ...prev[tab], error: err.message || "Failed to refresh data" },
+        [tab]: { ...prev[tab], error: errorMessage },
       }));
     } finally {
       setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], refreshing: false } }));
@@ -214,7 +217,7 @@ export default function CoinTabsSection() {
                 >
                   <td className="py-3 px-4 font-medium">{idx + 1}</td>
                   <td className="py-3 px-4 flex items-center space-x-2">
-                    <img src={coin.image} alt={coin.name} className="w-5 h-5 rounded-full" />
+                    <Image src={coin.image} alt={coin.name} width={20} height={20} className="w-5 h-5 rounded-full" />
                     <span className="font-medium">{coin.name}</span>
                     <span className="text-[--color-muted-foreground] text-xs">{coin.symbol.toUpperCase()}</span>
                   </td>

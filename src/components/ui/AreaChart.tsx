@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
-import { ChartContainer, ChartTooltip, ChartLegend } from "./chart"; // your existing chart exports
+import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from "./chart"; // your existing chart exports
 
 interface AreaChartProps {
-  data: any[];
+  data: Record<string, unknown>[];
   xKey: string;
   yKey: string;
-  config?: Record<string, any>;
+  config?: ChartConfig;
   className?: string;
 }
 

@@ -3,14 +3,25 @@
 // stores the latest metrics in a local database (SQLite).
 
 import { NextResponse } from "next/server";
-import { startGlobalMetricsJob } from "@/jobs/globalMetricsJob";
+// import { startGlobalMetricsJob } from "@/jobs/globalMetricsJob";
 import db from '@/lib/db';
 import { insertOrUpdateGlobalMetrics } from "@/lib/db/globalMetrics"; // Import the function
 
 // // Start the job once per server instance
 // // This will initiate the periodic fetching process in the background.
 // startGlobalMetricsJob();
-
+type GlobalMetricsRow = {
+    id: number;
+    total_market_cap: number;
+    total_volume: number;
+    btc_dominance: number;
+    eth_dominance: number;
+    market_cap_change_24h: number;
+    extra: string;
+    last_updated: string;
+    last_fetched: string;
+  };
+  
 // Helper: format relative time
 function format_time_ago(dateStr?: string) {
     if (!dateStr) return "";
@@ -67,9 +78,10 @@ async function fetchAndSaveGlobalMetrics() {
 
         console.log("Global metrics updated successfully.");
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching or saving global metrics:", error);
-        return { success: false, error: error.message };
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -77,49 +89,69 @@ async function fetchAndSaveGlobalMetrics() {
 
 // GET handler to retrieve the latest cached data
 export async function GET() {
-    const row = db.prepare(`SELECT * FROM global_metrics ORDER BY id DESC LIMIT 1`).get();
+    const row = db
+      .prepare<[], GlobalMetricsRow>(`SELECT * FROM global_metrics ORDER BY id DESC LIMIT 1`)
+      .get();
+  
     if (!row) {
-        return NextResponse.json({ error: "No global metrics available" }, { status: 404 });
+      return NextResponse.json({ error: "No global metrics available" }, { status: 404 });
     }
-
-    // Add formatted "time ago" field
+  
     const formattedRow = {
-        ...row,
-        last_updated_formatted: format_time_ago(row.last_updated)
+      ...row,
+      last_updated_formatted: format_time_ago(row.last_updated),
     };
-
+  
     return NextResponse.json({ metrics: formattedRow });
-}
+  }
+  
 
 // POST handler to force a new fetch and cache update
 export async function POST() {
     try {
-        const result = await fetchAndSaveGlobalMetrics();
-        if (!result.success) {
-            if (result.error === "RATE_LIMIT") {
-                return NextResponse.json(
-                    { error: "API rate limit exceeded. Please try again in 30-60 seconds." },
-                    { status: 429 } // Return the specific 429 status code
-                );
-            }
-            return NextResponse.json(
-                { error: "Failed to refresh global metrics." },
-                { status: 500 } // Generic server error
-            );
+      // Fetch and save the latest metrics
+      const result = await fetchAndSaveGlobalMetrics();
+  
+      if (!result.success) {
+        if (result.error === "RATE_LIMIT") {
+          return NextResponse.json(
+            { error: "API rate limit exceeded. Please try again in 30-60 seconds." },
+            { status: 429 }
+          );
         }
-
-        // After a successful refresh, return the newly fetched data
-        const row = db.prepare(`SELECT * FROM global_metrics ORDER BY id DESC LIMIT 1`).get();
-        const formattedRow = {
-            ...row,
-            last_updated_formatted: format_time_ago(row.last_updated)
-        };
-        return NextResponse.json({ metrics: formattedRow });
-    } catch (err) {
-        console.error("Unexpected error in POST handler:", err);
+  
         return NextResponse.json(
-            { error: "An unexpected server error occurred." },
-            { status: 500 }
+          { error: "Failed to refresh global metrics." },
+          { status: 500 }
         );
+      }
+  
+
+  
+      const row = db
+        .prepare<[], GlobalMetricsRow>(`SELECT * FROM global_metrics ORDER BY id DESC LIMIT 1`)
+        .get();
+  
+      if (!row) {
+        return NextResponse.json(
+          { error: "No global metrics available after refresh." },
+          { status: 404 }
+        );
+      }
+  
+      // Add formatted "time ago" field
+      const formattedRow = {
+        ...row,
+        last_updated_formatted: format_time_ago(row.last_updated),
+      };
+  
+      return NextResponse.json({ metrics: formattedRow });
+    } catch (err) {
+      console.error("Unexpected error in POST handler:", err);
+      return NextResponse.json(
+        { error: "An unexpected server error occurred." },
+        { status: 500 }
+      );
     }
-}
+  }
+  

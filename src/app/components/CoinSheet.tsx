@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CircleArrowUp, CircleArrowDown, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,7 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
     is_up: coin.price_change_percentage_24h > 0,
   });
 
-  const fetchCoin = async (method: "GET" | "POST" = "GET") => {
+  const fetchCoin = useCallback(async (method: "GET" | "POST" = "GET") => {
     if (!coinId) return;
 
     setLoading(true);
@@ -88,11 +89,11 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, [coinId]);
 
   useEffect(() => {
     fetchCoin("GET");
-  }, [coinId]);
+  }, [coinId, fetchCoin]);
 
   const handleRefresh = () => fetchCoin("POST");
 
@@ -112,7 +113,7 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
               {coinData?.image && (
-                <img src={coinData.image} alt={coinName || "Coin"} className="w-12 h-12 rounded-full" />
+                <Image src={coinData.image} alt={coinName || "Coin"} width={48} height={48} className="w-12 h-12 rounded-full" />
               )}
               <div className="flex flex-col">
                 <SheetTitle className="text-3xl font-bold flex items-center gap-2">

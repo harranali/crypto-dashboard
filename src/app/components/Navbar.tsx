@@ -10,9 +10,8 @@ export default function Navbar() {
   const websiteUrl = "https://www.yourwebsite.com"; // Replace with your website URL
 
   return (
-    <nav className="bg-white shadow-sm p-4 flex flex-col md:flex-row md:justify-between items-center sticky top-0 z-40">
-      {/* Top row: Logo and mobile menu button */}
-      <div className="flex w-full justify-between items-center md:w-auto">
+    <nav className="bg-white shadow-sm p-4 sticky top-0 z-40">
+      <div className="flex justify-between items-center">
         {/* Left logo */}
         <div className="flex items-center space-x-3">
           <svg
@@ -25,7 +24,7 @@ export default function Navbar() {
           <span className="font-bold text-xl">CryptoDash</span>
         </div>
 
-        {/* Desktop menu */}
+        {/* Desktop menu - Right side */}
         <div className="hidden md:flex space-x-6 text-gray-600">
           <a
             href={githubUrl}

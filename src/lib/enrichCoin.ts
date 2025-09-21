@@ -1,5 +1,40 @@
 // Helper to calculate extra metrics safely
-export function calculateExtra(data: any) {
+interface CoinGeckoData {
+  market_data?: {
+    sparkline_7d?: {
+      price?: number[];
+    };
+    current_price?: {
+      usd?: number;
+    };
+    ath?: {
+      usd?: number;
+    };
+    atl?: {
+      usd?: number;
+    };
+    market_cap?: {
+      usd?: number;
+    };
+    total_volume?: {
+      usd?: number;
+    };
+    circulating_supply?: number;
+    max_supply?: number;
+  };
+  market_cap_rank?: number;
+  description?: {
+    en?: string;
+  };
+  links?: {
+    homepage?: string[];
+    twitter_screen_name?: string;
+    subreddit_url?: string;
+  };
+  developer_score?: number;
+}
+
+export function calculateExtra(data: CoinGeckoData) {
   const sparkline = data.market_data?.sparkline_7d?.price || [];
   const first = sparkline[0] || 0;
   const last = sparkline[sparkline.length - 1] || 0;
@@ -11,11 +46,11 @@ export function calculateExtra(data: any) {
     ? sparkline.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / sparkline.length
     : 0;
 
-  const percent_to_ath = data.market_data?.ath?.usd
+  const percent_to_ath = data.market_data?.ath?.usd && data.market_data?.current_price?.usd
     ? ((data.market_data.current_price.usd / data.market_data.ath.usd) - 1) * 100
     : null;
 
-  const circulating_percent = data.market_data?.max_supply
+  const circulating_percent = data.market_data?.max_supply && data.market_data?.circulating_supply
     ? (data.market_data.circulating_supply / data.market_data.max_supply) * 100
     : null;
 
@@ -36,10 +71,10 @@ export function calculateExtra(data: any) {
     seven_day_change: first ? ((last - first) / first) * 100 : 0,
     volatility: Math.sqrt(variance),
     ma7: mean,
-    price_to_market_cap: data.market_data?.market_cap?.usd
+    price_to_market_cap: data.market_data?.market_cap?.usd && data.market_data?.current_price?.usd
       ? data.market_data.current_price.usd / data.market_data.market_cap.usd
       : null,
-    price_to_volume: data.market_data?.total_volume?.usd
+    price_to_volume: data.market_data?.total_volume?.usd && data.market_data?.current_price?.usd
       ? data.market_data.current_price.usd / data.market_data.total_volume.usd
       : null,
     momentum,

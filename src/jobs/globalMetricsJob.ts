@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+// import db from "@/lib/db";
 import { insertOrUpdateGlobalMetrics } from "@/lib/db/globalMetrics";
 
 // Helper to fetch from CoinGecko
