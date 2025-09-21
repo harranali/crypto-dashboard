@@ -27,7 +27,7 @@ interface CoinGeckoMarket {
   circulating_supply: number;
   max_supply: number;
   image: string;
-  sparkline_in_7d?: unknown;
+  sparkline_in_7d?: { price: number[] };
   last_updated?: string;
 }
 
