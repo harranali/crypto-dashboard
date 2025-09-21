@@ -3,6 +3,7 @@ import db from "@/lib/db";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
 import { Coin } from "@/types/coin";
 import { calculateExtra } from "@/lib/enrichCoin";
+import { type CoinGeckoData } from "@/lib/enrichCoin";
 
 // Helper to create relative time
 function formatTimeAgo(dateStr?: string): string {
@@ -33,28 +34,29 @@ interface CoinGeckoMarket {
 
 // Map CoinGecko market coin to our Coin interface
 function mapCoinGeckoMarketToCoin(coin: CoinGeckoMarket): Coin {
-  // Create a mock data structure that matches the format expected by calculateExtra
-  const mockData = {
+  // Ensure the type matches what calculateExtra expects
+  const data: CoinGeckoData = {
     market_data: {
       sparkline_7d: {
-        price: coin.sparkline_in_7d?.price || []
+        // TypeScript now knows this is number[]
+        price: coin.sparkline_in_7d?.price ?? []
       },
       current_price: { usd: coin.current_price },
-      ath: { usd: 0 }, // Not available in market data
-      atl: { usd: 0 }, // Not available in market data
+      ath: { usd: 0 },
+      atl: { usd: 0 },
       market_cap: { usd: coin.market_cap },
       total_volume: { usd: coin.total_volume },
       circulating_supply: coin.circulating_supply,
       max_supply: coin.max_supply
     },
-    market_cap_rank: 0, // Not available in market data
+    market_cap_rank: 0,
     description: { en: "" },
     links: { homepage: [], twitter_screen_name: "", subreddit_url: "" },
     developer_score: 0
   };
 
-  const extra_obj = calculateExtra(mockData);
-  
+  const extra_obj = calculateExtra(data);
+
   return {
     id: coin.id,
     name: coin.name,
@@ -70,6 +72,7 @@ function mapCoinGeckoMarketToCoin(coin: CoinGeckoMarket): Coin {
     last_updated: coin.last_updated || new Date().toISOString(),
   };
 }
+
 
 // GET: fetch Top 10 gainers from DB
 export async function GET() {

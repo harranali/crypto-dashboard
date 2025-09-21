@@ -1,5 +1,5 @@
 // Helper to calculate extra metrics safely
-interface CoinGeckoData {
+export interface CoinGeckoData {
   market_data?: {
     sparkline_7d?: {
       price?: number[];

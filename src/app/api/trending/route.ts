@@ -3,6 +3,7 @@ import db from "@/lib/db";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
 import { Coin } from "@/types/coin";
 import { calculateExtra } from "@/lib/enrichCoin";
+import { type CoinGeckoData } from "@/lib/enrichCoin";
 
 // Helper to create relative time
 function formatTimeAgo(dateStr?: string): string {
@@ -93,9 +94,10 @@ export async function GET() {
 }
 
 // POST: fetch trending coins and update DB
+// POST: fetch trending coins and update DB
 export async function POST() {
   try {
-    // Fetch trending coins IDs from CoinGecko
+    // 1. Fetch trending coins IDs from CoinGecko
     const res = await fetch("https://api.coingecko.com/api/v3/search/trending");
     
     if (!res.ok) {
@@ -116,7 +118,7 @@ export async function POST() {
 
     if (!trendingIds.length) return NextResponse.json({ success: true, count: 0, coins: [] });
 
-    // Fetch market data for trending coins
+    // 2. Fetch market data for trending coins
     const marketRes = await fetch(
       `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${trendingIds.join(
         ","
@@ -138,68 +140,101 @@ export async function POST() {
 
     const marketData: CoinGeckoMarket[] = await marketRes.json();
 
-  // Reorder marketData to match trendingIds order
-  const orderedMarketData: Coin[] = trendingIds
-    .map((id) => marketData.find((c) => c.id === id))
-    .filter((c): c is CoinGeckoMarket => Boolean(c))
-    .map(mapCoinGeckoMarketToCoin);
+    // 3. Reorder marketData to match trendingIds order
+    const orderedMarketData: Coin[] = trendingIds
+      .map((id) => marketData.find((c) => c.id === id))
+      .filter((c): c is CoinGeckoMarket => Boolean(c))
+      .map((coin) => {
+        // Format data for calculateExtra
+        const formattedData: CoinGeckoData = {
+          market_data: {
+            sparkline_7d: { price: coin.sparkline_in_7d?.price ?? [] },
+            current_price: { usd: coin.current_price },
+            ath: { usd: 0 },
+            atl: { usd: 0 },
+            market_cap: { usd: coin.market_cap },
+            total_volume: { usd: coin.total_volume },
+            circulating_supply: coin.circulating_supply,
+            max_supply: coin.max_supply,
+          },
+          market_cap_rank: 0,
+          description: { en: "" },
+          links: { homepage: [], twitter_screen_name: "", subreddit_url: "" },
+          developer_score: 0,
+        };
 
-  // Insert or update coins table
-  insertOrUpdateCoins(orderedMarketData);
+        const extra_obj = calculateExtra(formattedData);
 
-  const now = new Date().toISOString();
+        return {
+          id: coin.id,
+          name: coin.name,
+          symbol: coin.symbol,
+          current_price: coin.current_price,
+          price_change_percentage_24h: coin.price_change_percentage_24h,
+          market_cap: coin.market_cap,
+          total_volume: coin.total_volume,
+          circulating_supply: coin.circulating_supply,
+          max_supply: coin.max_supply,
+          image: coin.image,
+          extra: JSON.stringify(extra_obj),
+          last_updated: coin.last_updated || new Date().toISOString(),
+        };
+      });
 
-  const txn = db.transaction(() => {
-    // 1. Delete trending entries not in the latest trendingIds
-    if (trendingIds.length) {
-      db.prepare(
-        `DELETE FROM trending WHERE coin_id NOT IN (${trendingIds.map(() => "?").join(",")})`
-      ).run(...trendingIds);
-    }
+    // 4. Insert or update coins table
+    insertOrUpdateCoins(orderedMarketData);
 
-    // 2. Insert or update trending ranks
-    const insertTrending = db.prepare(`
-      INSERT INTO trending (coin_id, rank, updated_at)
-      VALUES (@coin_id, @rank, @updated_at)
-      ON CONFLICT(coin_id) DO UPDATE SET
-        rank=excluded.rank,
-        updated_at=excluded.updated_at
-    `);
+    const now = new Date().toISOString();
 
-    orderedMarketData.forEach((coin, idx) => {
-      insertTrending.run({
-        coin_id: coin.id,
-        rank: idx + 1,
-        updated_at: now,
+    // 5. Update trending table
+    const txn = db.transaction(() => {
+      // Delete entries not in latest trendingIds
+      if (trendingIds.length) {
+        db.prepare(
+          `DELETE FROM trending WHERE coin_id NOT IN (${trendingIds.map(() => "?").join(",")})`
+        ).run(...trendingIds);
+      }
+
+      // Insert/update trending ranks
+      const insertTrending = db.prepare(`
+        INSERT INTO trending (coin_id, rank, updated_at)
+        VALUES (@coin_id, @rank, @updated_at)
+        ON CONFLICT(coin_id) DO UPDATE SET
+          rank=excluded.rank,
+          updated_at=excluded.updated_at
+      `);
+
+      orderedMarketData.forEach((coin, idx) => {
+        insertTrending.run({
+          coin_id: coin.id,
+          rank: idx + 1,
+          updated_at: now,
+        });
       });
     });
-  });
 
-  txn();
+    txn();
 
-  // Fetch updated trending coins with formatted timestamp
-  const rows = db
-    .prepare(`
-      SELECT t.rank, t.updated_at, c.*
-      FROM trending t
-      JOIN coins c ON c.id = t.coin_id
-      ORDER BY t.rank ASC
-    `)
-    .all() as Array<Coin & { rank: number; updated_at: string }>;
+    // 6. Fetch updated trending coins with formatted timestamp
+    const rows = db
+      .prepare(`
+        SELECT t.rank, t.updated_at, c.*
+        FROM trending t
+        JOIN coins c ON c.id = t.coin_id
+        ORDER BY t.rank ASC
+      `)
+      .all() as Array<Coin & { rank: number; updated_at: string }>;
 
-  const coins = rows.map((r) => ({
-    ...r,
-    extra: r.extra ? JSON.parse(r.extra as string) : {},
-    updated_at_formatted: formatTimeAgo(r.updated_at),
-  }));
+    const coins = rows.map((r) => ({
+      ...r,
+      extra: r.extra ? JSON.parse(r.extra as string) : {},
+      updated_at_formatted: formatTimeAgo(r.updated_at),
+    }));
 
-  return NextResponse.json({ success: true, count: orderedMarketData.length, coins });
+    return NextResponse.json({ success: true, count: orderedMarketData.length, coins });
   } catch (error: unknown) {
     console.error("Error in trending POST:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

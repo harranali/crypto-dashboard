@@ -3,6 +3,7 @@ import db from "@/lib/db";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
 import { Coin } from "@/types/coin";
 import { calculateExtra } from "@/lib/enrichCoin";
+import { type CoinGeckoData } from "@/lib/enrichCoin";
 
 // Helper to create relative time
 function formatTimeAgo(dateStr?: string): string {
@@ -92,6 +93,7 @@ export async function GET() {
 }
 
 // POST: fetch coins and update Top 10 losers
+// POST: fetch coins and update Top 10 losers
 export async function POST() {
   try {
     // Fetch top 100 coins from CoinGecko
@@ -114,72 +116,102 @@ export async function POST() {
 
     const data: CoinGeckoMarket[] = await res.json();
 
-  // Sort by 24h price change ascending to get losers
-  const losers = data
-    .sort((a, b) => (a.price_change_percentage_24h || 0) - (b.price_change_percentage_24h || 0))
-    .slice(0, 10);
+    // Sort by 24h price change ascending to get losers
+    const losers = data
+      .sort((a, b) => (a.price_change_percentage_24h ?? 0) - (b.price_change_percentage_24h ?? 0))
+      .slice(0, 10);
 
-  // Prepare coins for insert/update
-  const coins: Coin[] = losers.map(mapCoinGeckoMarketToCoin);
+    // Map to Coin type with extra field calculated
+    const coins: Coin[] = losers.map((coin) => {
+      const mockData: CoinGeckoData = {
+        market_data: {
+          sparkline_7d: { price: coin.sparkline_in_7d?.price ?? [] },
+          current_price: { usd: coin.current_price },
+          ath: { usd: 0 },
+          atl: { usd: 0 },
+          market_cap: { usd: coin.market_cap },
+          total_volume: { usd: coin.total_volume },
+          circulating_supply: coin.circulating_supply,
+          max_supply: coin.max_supply,
+        },
+        market_cap_rank: 0,
+        description: { en: "" },
+        links: { homepage: [], twitter_screen_name: "", subreddit_url: "" },
+        developer_score: 0,
+      };
 
-  // Insert or update coins table
-  insertOrUpdateCoins(coins);
+      const extra_obj = calculateExtra(mockData);
 
-  const now = new Date().toISOString();
+      return {
+        id: coin.id,
+        name: coin.name,
+        symbol: coin.symbol,
+        current_price: coin.current_price,
+        price_change_percentage_24h: coin.price_change_percentage_24h,
+        market_cap: coin.market_cap,
+        total_volume: coin.total_volume,
+        circulating_supply: coin.circulating_supply,
+        max_supply: coin.max_supply,
+        image: coin.image,
+        extra: JSON.stringify(extra_obj),
+        last_updated: coin.last_updated ?? new Date().toISOString(),
+      };
+    });
 
-  const txn = db.transaction(() => {
-    const loserIds = coins.map((c) => c.id);
+    // Insert or update coins table
+    insertOrUpdateCoins(coins);
 
-    // 1. Delete any coins from losers table not in the latest top 10
-    if (loserIds.length) {
-      db.prepare(
-        `DELETE FROM losers WHERE coin_id NOT IN (${loserIds.map(() => "?").join(",")})`
-      ).run(...loserIds);
-    }
+    const now = new Date().toISOString();
 
-    // 2. Insert or update losers table with rank
-    const insertLosers = db.prepare(`
-      INSERT INTO losers (coin_id, rank, updated_at)
-      VALUES (@coin_id, @rank, @updated_at)
-      ON CONFLICT(coin_id) DO UPDATE SET
-        rank=excluded.rank,
-        updated_at=excluded.updated_at
-    `);
+    // Update losers table in a transaction
+    const txn = db.transaction(() => {
+      const loserIds = coins.map((c) => c.id);
 
-    coins.forEach((coin, idx) => {
-      insertLosers.run({
-        coin_id: coin.id,
-        rank: idx + 1,
-        updated_at: now,
+      if (loserIds.length) {
+        db.prepare(
+          `DELETE FROM losers WHERE coin_id NOT IN (${loserIds.map(() => "?").join(",")})`
+        ).run(...loserIds);
+      }
+
+      const insertLosers = db.prepare(`
+        INSERT INTO losers (coin_id, rank, updated_at)
+        VALUES (@coin_id, @rank, @updated_at)
+        ON CONFLICT(coin_id) DO UPDATE SET
+          rank=excluded.rank,
+          updated_at=excluded.updated_at
+      `);
+
+      coins.forEach((coin, idx) => {
+        insertLosers.run({
+          coin_id: coin.id,
+          rank: idx + 1,
+          updated_at: now,
+        });
       });
     });
-  });
 
-  txn();
+    txn();
 
-  // Fetch updated losers with formatted timestamp
-  const rows = db
-    .prepare(`
-      SELECT t.rank, t.updated_at AS losers_updated_at, c.*, c.updated_at AS coin_updated_at
-      FROM losers t
-      JOIN coins c ON c.id = t.coin_id
-      ORDER BY t.rank ASC
-    `)
-    .all() as Array<Coin & { rank: number; losers_updated_at: string }>;
+    // Fetch updated losers with formatted timestamp
+    const rows = db
+      .prepare(`
+        SELECT t.rank, t.updated_at AS losers_updated_at, c.*, c.updated_at AS coin_updated_at
+        FROM losers t
+        JOIN coins c ON c.id = t.coin_id
+        ORDER BY t.rank ASC
+      `)
+      .all() as Array<Coin & { rank: number; losers_updated_at: string }>;
 
-  const resultCoins = rows.map((r) => ({
-    ...r,
-    extra: JSON.parse(r.extra),
-    updated_at_formatted: formatTimeAgo(r.losers_updated_at),
-  }));
+    const resultCoins = rows.map((r) => ({
+      ...r,
+      extra: JSON.parse(r.extra),
+      updated_at_formatted: formatTimeAgo(r.losers_updated_at),
+    }));
 
-  return NextResponse.json({ success: true, count: coins.length, coins: resultCoins });
+    return NextResponse.json({ success: true, count: coins.length, coins: resultCoins });
   } catch (error: unknown) {
     console.error("Error in losers POST:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
