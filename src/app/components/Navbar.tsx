@@ -6,7 +6,7 @@ import { Github, Link, Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const githubUrl = "https://github.com/harranali"; // Replace with your GitHub URL
+  const githubUrl = "https://github.com/harranali/crypto-dashboard"; // Replace with your GitHub URL
   const websiteUrl = "https://harranali.github.io/"; // Replace with your website URL
 
   return (
