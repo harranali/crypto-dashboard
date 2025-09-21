@@ -71,20 +71,49 @@ export async function GET() {
 
 // POST: fetch trending coins and update DB
 export async function POST() {
-  // Fetch trending coins IDs from CoinGecko
-  const res = await fetch("https://api.coingecko.com/api/v3/search/trending");
-  const data: { coins: { item: { id: string } }[] } = await res.json();
-  const trendingIds = data.coins.map((c) => c.item.id);
+  try {
+    // Fetch trending coins IDs from CoinGecko
+    const res = await fetch("https://api.coingecko.com/api/v3/search/trending");
+    
+    if (!res.ok) {
+      if (res.status === 429) {
+        return NextResponse.json(
+          { error: "API rate limit exceeded. Please try again in 30-60 seconds." },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Failed to fetch trending data from CoinGecko API" },
+        { status: res.status }
+      );
+    }
 
-  if (!trendingIds.length) return NextResponse.json({ success: true, count: 0, coins: [] });
+    const data: { coins: { item: { id: string } }[] } = await res.json();
+    const trendingIds = data.coins.map((c) => c.item.id);
 
-  // Fetch market data for trending coins
-  const marketRes = await fetch(
-    `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${trendingIds.join(
-      ","
-    )}&sparkline=true`
-  );
-  const marketData: CoinGeckoMarket[] = await marketRes.json();
+    if (!trendingIds.length) return NextResponse.json({ success: true, count: 0, coins: [] });
+
+    // Fetch market data for trending coins
+    const marketRes = await fetch(
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${trendingIds.join(
+        ","
+      )}&sparkline=true`
+    );
+
+    if (!marketRes.ok) {
+      if (marketRes.status === 429) {
+        return NextResponse.json(
+          { error: "API rate limit exceeded. Please try again in 30-60 seconds." },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Failed to fetch market data from CoinGecko API" },
+        { status: marketRes.status }
+      );
+    }
+
+    const marketData: CoinGeckoMarket[] = await marketRes.json();
 
   // Reorder marketData to match trendingIds order
   const orderedMarketData: Coin[] = trendingIds
@@ -142,4 +171,12 @@ export async function POST() {
   }));
 
   return NextResponse.json({ success: true, count: orderedMarketData.length, coins });
+  } catch (error: unknown) {
+    console.error("Error in trending POST:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
 }

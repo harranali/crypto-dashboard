@@ -62,7 +62,16 @@ export async function POST(
       `https://api.coingecko.com/api/v3/coins/${id}?localization=false&market_data=true&sparkline=true`
     );
     if (!res.ok) {
-      throw new Error("API rate limit exceeded. Please try again in 30-60 seconds.");
+      if (res.status === 429) {
+        return NextResponse.json(
+          { error: "API rate limit exceeded. Please try again in 30-60 seconds." },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Failed to fetch coin data from CoinGecko API" },
+        { status: res.status }
+      );
     }
 
     const data = await res.json();

@@ -33,8 +33,16 @@ export default function GlobalMetrics() {
         if (res.status === 429) {
           setError("API rate limit exceeded. Please try again in 30-60 seconds.");
         } else {
-          const errorData = await res.json();
-          setError(errorData.error || "Failed to fetch global metrics. Please try again.");
+          // Try to parse error response, fallback to generic message
+          let errorMessage = "Failed to fetch global metrics. Please try again.";
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            // If JSON parsing fails, use status text or generic message
+            errorMessage = res.statusText || errorMessage;
+          }
+          setError(errorMessage);
         }
         setLoading(false);
         return;

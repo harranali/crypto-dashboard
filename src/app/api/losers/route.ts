@@ -70,11 +70,26 @@ export async function GET() {
 
 // POST: fetch coins and update Top 10 losers
 export async function POST() {
-  // Fetch top 100 coins from CoinGecko
-  const res = await fetch(
-    "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true"
-  );
-  const data: CoinGeckoMarket[] = await res.json();
+  try {
+    // Fetch top 100 coins from CoinGecko
+    const res = await fetch(
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true"
+    );
+
+    if (!res.ok) {
+      if (res.status === 429) {
+        return NextResponse.json(
+          { error: "API rate limit exceeded. Please try again in 30-60 seconds." },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Failed to fetch data from CoinGecko API" },
+        { status: res.status }
+      );
+    }
+
+    const data: CoinGeckoMarket[] = await res.json();
 
   // Sort by 24h price change ascending to get losers
   const losers = data
@@ -136,4 +151,12 @@ export async function POST() {
   }));
 
   return NextResponse.json({ success: true, count: coins.length, coins: resultCoins });
+  } catch (error: unknown) {
+    console.error("Error in losers POST:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
 }

@@ -74,11 +74,26 @@ export async function GET() {
 
 // POST: fetch from CoinGecko and update DB
 export async function POST() {
-  // Fetch top 100 market data from CoinGecko
-  const res = await fetch(
-    "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true"
-  );
-  const data: CoinGeckoMarket[] = await res.json();
+  try {
+    // Fetch top 100 market data from CoinGecko
+    const res = await fetch(
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true"
+    );
+
+    if (!res.ok) {
+      if (res.status === 429) {
+        return NextResponse.json(
+          { error: "API rate limit exceeded. Please try again in 30-60 seconds." },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Failed to fetch data from CoinGecko API" },
+        { status: res.status }
+      );
+    }
+
+    const data: CoinGeckoMarket[] = await res.json();
 
   // Prepare coins for insert
   const coins: Coin[] = data.map(mapCoinGeckoMarketToCoin);
@@ -139,4 +154,12 @@ export async function POST() {
   }));
 
   return NextResponse.json({ success: true, count: data.length, coins: resultCoins });
+  } catch (error: unknown) {
+    console.error("Error in top100 POST:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
 }

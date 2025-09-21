@@ -56,7 +56,25 @@ export default function CoinTabsSection() {
     setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: true, error: null } }));
     try {
       const res = await fetch(`/api/${tab}`);
-      if (!res.ok) throw new Error("Failed to fetch coins");
+      
+      if (!res.ok) {
+        // Handle rate limit and other HTTP errors
+        if (res.status === 429) {
+          throw new Error("API rate limit exceeded. Please try again in 30-60 seconds.");
+        }
+        
+        // Try to parse error response, fallback to generic message
+        let errorMessage = "Failed to fetch coins";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If JSON parsing fails, use status text or generic message
+          errorMessage = res.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
       const data = await res.json();
       setTabData((prev) => ({
         ...prev,
@@ -78,10 +96,25 @@ export default function CoinTabsSection() {
     setTabData((prev) => ({ ...prev, [tab]: { ...prev[tab], refreshing: true, error: null } }));
     try {
       const res = await fetch(`/api/${tab}`, { method: "POST" });
+      
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to refresh data");
+        // Handle rate limit and other HTTP errors
+        if (res.status === 429) {
+          throw new Error("API rate limit exceeded. Please try again in 30-60 seconds.");
+        }
+        
+        // Try to parse error response, fallback to generic message
+        let errorMessage = "Failed to refresh data";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If JSON parsing fails, use status text or generic message
+          errorMessage = res.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
+      
       await fetchTabCoins(tab);
     } catch (err: unknown) {
       console.error(err);

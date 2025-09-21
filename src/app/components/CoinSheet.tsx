@@ -60,13 +60,22 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
         return;
       }
 
-      const result = await res.json();
-
       if (!res.ok) {
-        setError(result.error || "Failed to fetch coin data");
+        // Try to parse error response, fallback to generic message
+        let errorMessage = "Failed to fetch coin data";
+        try {
+          const result = await res.json();
+          errorMessage = result.error || errorMessage;
+        } catch {
+          // If JSON parsing fails, use status text or generic message
+          errorMessage = res.statusText || errorMessage;
+        }
+        setError(errorMessage);
         setLoading(false);
         return;
       }
+
+      const result = await res.json();
 
       const coin: ParsedCoin = computeDerivedFields(result.coin_data);
       setCoinData(coin);
