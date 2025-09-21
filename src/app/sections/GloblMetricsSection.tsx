@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowUp, ArrowDown, RefreshCw } from "lucide-react"; // Import new icons
 
 interface GlobalMetricsData {
   total_market_cap: number;
   total_volume: number;
   btc_dominance: number;
-  eth_dominance: number;
+    eth_dominance: number;
   market_cap_change_24h: number;
   last_updated: string;
   last_updated_formatted: string;
@@ -25,11 +26,13 @@ export default function GlobalMetrics() {
     setError(null);
     try {
       const res = await fetch("/api/global-metrics");
-      if (!res.ok) throw new Error("Failed to fetch global metrics");
+      if (!res.ok) {
+        throw new Error("Failed to fetch global metrics. Please try again.");
+      }
       const data = await res.json();
       setMetrics(data.metrics);
     } catch (err: any) {
-      setError(err.message || "Error fetching metrics");
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -55,61 +58,101 @@ export default function GlobalMetrics() {
     return `${num > 0 ? "+" : ""}${num.toFixed(2)}%`;
   };
 
-  // Show skeletons if loading OR metrics are not loaded yet
   const showSkeleton = loading || !metrics;
+
+  const ChangeIcon =
+    metrics?.market_cap_change_24h != null ? (
+      metrics.market_cap_change_24h >= 0 ? (
+        <ArrowUp size={16} />
+      ) : (
+        <ArrowDown size={16} />
+      )
+    ) : null;
 
   return (
     <Card className="p-6 mb-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold">Global Metrics</h2>
-        <Button onClick={fetchMetrics} disabled={loading}>
+        <Button onClick={fetchMetrics} disabled={loading} aria-label="Refresh global metrics">
+          {loading ? (
+            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
           {loading ? "Refreshing..." : "Refresh"}
         </Button>
       </div>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
         {/* Total Market Cap */}
         <div>
           <p className="text-gray-500">Total Market Cap</p>
-          {showSkeleton ? <Skeleton className="h-8 w-32" /> : <p className="text-2xl font-semibold">{formatNumber(metrics?.total_market_cap)}</p>}
-          {showSkeleton ? <Skeleton className="h-4 w-12 mt-1" /> : (
-            <p
-              className={`text-sm mt-1 ${
-                metrics?.market_cap_change_24h != null
-                  ? metrics.market_cap_change_24h >= 0
-                    ? "text-green-500"
-                    : "text-red-500"
-                  : "text-gray-400"
-              }`}
-            >
-              {formatPercent(metrics?.market_cap_change_24h)}
-            </p>
+          {showSkeleton ? (
+            <Skeleton className="h-8 w-32" />
+          ) : (
+            <>
+              <p className="text-2xl font-semibold">
+                {formatNumber(metrics?.total_market_cap)}
+              </p>
+              <div
+                className={`flex items-center gap-1 text-sm mt-1 ${
+                  metrics?.market_cap_change_24h != null
+                    ? metrics.market_cap_change_24h >= 0
+                      ? "text-green-500"
+                      : "text-red-500"
+                    : "text-gray-400"
+                }`}
+              >
+                {ChangeIcon}
+                <span>{formatPercent(metrics?.market_cap_change_24h)}</span>
+              </div>
+            </>
           )}
         </div>
 
         {/* 24h Volume */}
         <div>
           <p className="text-gray-500">24h Volume</p>
-          {showSkeleton ? <Skeleton className="h-8 w-32" /> : <p className="text-2xl font-semibold">{formatNumber(metrics?.total_volume)}</p>}
+          {showSkeleton ? (
+            <Skeleton className="h-8 w-32" />
+          ) : (
+            <p className="text-2xl font-semibold">
+              {formatNumber(metrics?.total_volume)}
+            </p>
+          )}
         </div>
 
         {/* BTC Dominance */}
         <div>
           <p className="text-gray-500">BTC Dominance</p>
-          {showSkeleton ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-semibold">{metrics?.btc_dominance.toFixed(1)}%</p>}
+          {showSkeleton ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-semibold">
+              {metrics?.btc_dominance.toFixed(1)}%
+            </p>
+          )}
         </div>
 
         {/* ETH Dominance */}
         <div>
           <p className="text-gray-500">ETH Dominance</p>
-          {showSkeleton ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-semibold">{metrics?.eth_dominance.toFixed(1)}%</p>}
+          {showSkeleton ? (
+            <Skeleton className="h-8 w-16" />
+          ) : (
+            <p className="text-2xl font-semibold">
+              {metrics?.eth_dominance.toFixed(1)}%
+            </p>
+          )}
         </div>
       </div>
 
       {!showSkeleton && metrics && (
-        <p className="text-xs text-gray-400 mt-2">Last updated: {metrics.last_updated_formatted}</p>
+        <p className="text-xs text-gray-400 mt-6 text-right">
+          Last updated: {metrics.last_updated_formatted}
+        </p>
       )}
     </Card>
   );

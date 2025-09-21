@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import CoinSheet from "@/app/components/CoinSheet";
+import CoinTableRowSkeleton from "@/app/components/CoinTableRowSkeleton"; // New skeleton component
+import { Search, RefreshCw, ArrowUp, ArrowDown } from "lucide-react";
+
 
 interface Coin {
   id: string;
@@ -94,6 +97,18 @@ export default function CoinTabsSection() {
       coin.name.toLowerCase().includes(search.toLowerCase()) ||
       coin.symbol.toLowerCase().includes(search.toLowerCase())
   );
+  
+  const formatLargeNumber = (num?: number) => {
+    if (num == null) return "-";
+    const suffixes = ["", "K", "M", "B", "T"];
+    const numAbs = Math.abs(num);
+    const tier = Math.floor(Math.log10(numAbs) / 3);
+    if (tier < 0) return num.toLocaleString();
+    const suffix = suffixes[tier];
+    const scale = Math.pow(10, tier * 3);
+    const scaled = num / scale;
+    return `${scaled.toFixed(1)}${suffix}`;
+  };
 
   return (
     <Card className="p-4">
@@ -119,7 +134,6 @@ export default function CoinTabsSection() {
           </button>
         ))}
       </div>
-
 
 
         {/* Refresh */}
@@ -166,7 +180,13 @@ export default function CoinTabsSection() {
       {/* Table */}
       <div className="overflow-x-auto">
         {tabData[activeTab].loading ? (
-          <p className="text-center py-4">Loading...</p>
+           <table className="w-full text-left min-w-[700px]">
+           <tbody>
+             {[...Array(10)].map((_, i) => (
+               <CoinTableRowSkeleton key={i} />
+             ))}
+           </tbody>
+         </table>
         ) : (
           <table className="w-full text-left min-w-[700px]">
             <thead className="text-gray-500 text-xs uppercase tracking-wider">
@@ -201,9 +221,9 @@ export default function CoinTabsSection() {
                   >
                     {coin.price_change_percentage_24h?.toFixed(2)}%
                   </td>
-                  <td className="py-3 px-4 text-gray-600">${coin.market_cap?.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-gray-600">${formatLargeNumber(coin.market_cap)}</td>
                   <td className="py-3 px-4 text-gray-600 hidden sm:table-cell">
-                    ${coin.total_volume?.toLocaleString()}
+                    ${formatLargeNumber(coin.total_volume)}
                   </td>
                   <td className="py-3 px-4 font-medium hidden sm:table-cell">
                     {coin.extra?.sevenDayChange?.toFixed(2)}%
