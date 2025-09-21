@@ -26,15 +26,20 @@ export default function GlobalMetrics() {
     setError(null);
     try {
       const res = await fetch("/api/global-metrics", {
-        method: forceRefresh ? "POST" : "GET", // Use POST for refresh, GET for initial load
+        method: forceRefresh ? "POST" : "GET",
       });
 
       if (!res.ok) {
         if (res.status === 429) {
-          throw new Error("Rate limit exceeded. Please try again after 30-60 seconds.");
+          setError("API rate limit exceeded. Please try again in 30-60 seconds.");
+        } else {
+          const errorData = await res.json();
+          setError(errorData.error || "Failed to fetch global metrics. Please try again.");
         }
-        throw new Error("Failed to fetch global metrics. Please try again.");
+        setLoading(false);
+        return;
       }
+
       const data = await res.json();
       setMetrics(data.metrics);
     } catch (err: any) {
@@ -45,11 +50,11 @@ export default function GlobalMetrics() {
   };
 
   useEffect(() => {
-    fetchMetrics(); // Initial fetch on component mount
+    fetchMetrics();
   }, []);
 
   const handleRefresh = () => {
-    fetchMetrics(true); // Call fetch function with forceRefresh = true
+    fetchMetrics(true);
   };
 
   const formatNumber = (num?: number) => {
@@ -81,19 +86,24 @@ export default function GlobalMetrics() {
 
   return (
     <Card className="p-6 mb-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-6">
         <h2 className="text-xl font-bold">Global Metrics</h2>
-        <Button onClick={handleRefresh} disabled={loading} aria-label="Refresh global metrics">
-          {loading ? (
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
+        <div className="flex flex-col items-end">
+          <Button onClick={handleRefresh} disabled={loading} aria-label="Refresh global metrics">
+            {loading ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            {loading ? "Refreshing..." : "Refresh"}
+          </Button>
+          {error && (
+            <p className="text-red-500 text-xs mt-2 text-right w-full">
+              {error}
+            </p>
           )}
-          {loading ? "Refreshing..." : "Refresh"}
-        </Button>
+        </div>
       </div>
-
-      {error && <p className="text-[--color-brand-red] text-sm mb-4">{error}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
         {/* Total Market Cap */}

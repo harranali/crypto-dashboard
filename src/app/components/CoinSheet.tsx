@@ -51,10 +51,19 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
 
     try {
       const res = await fetch(`/api/coin/${coinId}`, { method });
+
+      // Check for rate-limiting status code (429)
+      if (res.status === 429) {
+        setError("API rate limit reached. Try again in 30-60 seconds.");
+        setLoading(false);
+        return;
+      }
+
       const result = await res.json();
 
       if (!res.ok) {
         setError(result.error || "Failed to fetch coin data");
+        setLoading(false);
         return;
       }
 
@@ -128,7 +137,7 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-1 **ml-auto**">
+            <div className="flex flex-col items-end gap-1 ml-auto">
               <Button
                 onClick={handleRefresh}
                 disabled={loading}
@@ -150,20 +159,21 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
                 ) : null
               )}
             </div>
-
           </div>
         </SheetHeader>
 
-        {loading ? (
+        {error ? (
+          <div className="flex justify-center items-center h-64 text-center">
+            <p className="text-red-500 text-lg">{error}</p>
+          </div>
+        ) : loading ? (
           <div className="flex justify-center items-center h-64">
             <p className="text-gray-400 text-lg animate-pulse">Loading coin data...</p>
           </div>
         ) : coinData ? (
           <div className="flex flex-col gap-6">
             <MetricsGrid coinData={coinData} />
-
             <ChartSection chartData={chartData} loading={loading} error={error} onRetry={handleRefresh} />
-
             <AboutSection extraDetails={extraDetails} />
           </div>
         ) : (

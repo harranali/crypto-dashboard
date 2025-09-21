@@ -10,6 +10,7 @@ export function insertOrUpdateGlobalMetrics(metrics: {
   last_updated: string;
   last_fetched: string;
 }) {
+
   db.prepare(`
     INSERT INTO global_metrics (
       id,

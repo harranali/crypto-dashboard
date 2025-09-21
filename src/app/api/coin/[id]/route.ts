@@ -53,7 +53,7 @@ export async function POST(req: Request, context: { params: { id: string } }) {
     const res = await fetch(
       `https://api.coingecko.com/api/v3/coins/${id}?localization=false&market_data=true&sparkline=true`
     );
-    if (!res.ok) throw new Error("Failed to fetch CoinGecko data");
+    if (!res.ok) throw new Error("API rate limit exceeded. Please try again in 30-60 seconds.");
 
     const data = await res.json();
     const extra_obj = calculateExtra(data); // object in snake_case
