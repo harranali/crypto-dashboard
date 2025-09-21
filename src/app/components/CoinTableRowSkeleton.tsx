@@ -42,6 +42,11 @@ export default function CoinTableRowSkeleton() {
       <td className="py-3 px-4 hidden sm:table-cell">
         <Skeleton className="h-4 w-12" />
       </td>
+
+      {/* 7d Chart (hidden on mobile and tablet) */}
+      <td className="py-3 px-4 hidden md:table-cell">
+        <Skeleton className="h-8 w-24" />
+      </td>
     </tr>
   );
 }

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import CoinSheet from "@/app/components/CoinSheet";
 import CoinTableRowSkeleton from "@/app/components/CoinTableRowSkeleton";
+import { SparklineChart } from "@/app/components/SparklineChart";
 import { RefreshCw } from "lucide-react";
 import clsx from "clsx";
 
@@ -20,6 +21,7 @@ interface Coin {
   image: string;
   extra?: {
     sevenDayChange?: number;
+    sparkline?: number[];
   };
   updated_at_formatted?: string;
 }
@@ -238,7 +240,7 @@ export default function CoinTabsSection() {
                 <th className="py-3 px-4">24h %</th>
                 <th className="py-3 px-4">Market Cap</th>
                 <th className="py-3 px-4 hidden sm:table-cell">24h Volume</th>
-                <th className="py-3 px-4 hidden sm:table-cell">7d %</th>
+                <th className="py-3 px-4 hidden md:table-cell">7d Chart</th>
               </tr>
             </thead>
             <tbody>
@@ -266,8 +268,13 @@ export default function CoinTabsSection() {
                   <td className="py-3 px-4 text-[--color-muted-foreground] hidden sm:table-cell">
                     ${formatLargeNumber(coin.total_volume)}
                   </td>
-                  <td className="py-3 px-4 font-medium hidden sm:table-cell">
-                    {coin.extra?.sevenDayChange?.toFixed(2)}%
+
+                  <td className="py-3 px-4 hidden md:table-cell">
+                    <SparklineChart 
+                      data={coin.extra?.sparkline || []} 
+                      width={100} 
+                      height={30}
+                    />
                   </td>
                 </tr>
               ))}

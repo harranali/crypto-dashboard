@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { insertOrUpdateCoins } from "@/lib/db/coins";
 import { Coin } from "@/types/coin";
+import { calculateExtra } from "@/lib/enrichCoin";
 
 // Helper to create relative time
 function formatTimeAgo(dateStr?: string): string {
@@ -32,6 +33,28 @@ interface CoinGeckoMarket {
 
 // Map CoinGecko market coin to our Coin interface
 function mapCoinGeckoMarketToCoin(coin: CoinGeckoMarket): Coin {
+  // Create a mock data structure that matches the format expected by calculateExtra
+  const mockData = {
+    market_data: {
+      sparkline_7d: {
+        price: coin.sparkline_in_7d?.price || []
+      },
+      current_price: { usd: coin.current_price },
+      ath: { usd: 0 }, // Not available in market data
+      atl: { usd: 0 }, // Not available in market data
+      market_cap: { usd: coin.market_cap },
+      total_volume: { usd: coin.total_volume },
+      circulating_supply: coin.circulating_supply,
+      max_supply: coin.max_supply
+    },
+    market_cap_rank: 0, // Not available in market data
+    description: { en: "" },
+    links: { homepage: [], twitter_screen_name: "", subreddit_url: "" },
+    developer_score: 0
+  };
+
+  const extra_obj = calculateExtra(mockData);
+  
   return {
     id: coin.id,
     name: coin.name,
@@ -43,7 +66,7 @@ function mapCoinGeckoMarketToCoin(coin: CoinGeckoMarket): Coin {
     circulating_supply: coin.circulating_supply,
     max_supply: coin.max_supply,
     image: coin.image,
-    extra: JSON.stringify({ sparkline_in_7d: coin.sparkline_in_7d || {} }),
+    extra: JSON.stringify(extra_obj),
     last_updated: coin.last_updated || new Date().toISOString(),
   };
 }
