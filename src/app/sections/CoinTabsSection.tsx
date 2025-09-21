@@ -115,13 +115,20 @@ export default function CoinTabsSection() {
     <Card className="p-4">
       {/* Tabs and Refresh */}
       <div className="flex items-center justify-between border-b pb-2 mb-2">
-        <div className="flex space-x-4">
+        {/*
+          Changes start here
+          Added flex-wrap to allow tabs to wrap to the next line on smaller screens.
+        */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {(Object.keys(TAB_LABELS) as TabType[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={clsx(
-                "relative py-2 px-4 text-lg font-semibold rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-[--color-ring]",
+                // Base styles for all screen sizes
+                "relative py-1 px-2 text-base font-semibold rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-[--color-ring]",
+                // Larger styles for screens >= 640px (sm breakpoint)
+                "sm:py-2 sm:px-4 sm:text-lg",
                 {
                   "font-bold after:absolute after:-bottom-1 after:left-0 after:w-full after:h-1 after:rounded after:bg-black":
                     activeTab === tab,
@@ -131,13 +138,16 @@ export default function CoinTabsSection() {
             >
               {TAB_LABELS[tab]}
               {activeTab === tab && tabData[tab].coins.length > 0 && tabData[tab].coins[0].updated_at_formatted && (
-                <span className="ml-2 text-xs text-[--color-muted-foreground]">
+                <span className="ml-2 text-xs text-[--color-muted-foreground] hidden md:inline">
                   updated {tabData[tab].coins[0].updated_at_formatted}
                 </span>
               )}
             </button>
           ))}
         </div>
+        {/*
+          Changes end here
+        */}
 
         {/* Refresh */}
         <Button

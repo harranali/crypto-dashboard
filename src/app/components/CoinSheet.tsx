@@ -133,7 +133,7 @@ export default function CoinSheet({ coinName, coinId, setCoin }: CoinSheetProps)
                 onClick={handleRefresh}
                 disabled={loading}
                 className={clsx(
-                  "flex items-center gap-1 px-3 bg-black text-white hover:bg-gray-800",
+                  "flex items-center gap-1 px-3 bg-black text-white hover:bg-gray-800 mt-10",
                   loading && "opacity-50 cursor-not-allowed"
                 )}
               >
