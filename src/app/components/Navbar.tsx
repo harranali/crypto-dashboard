@@ -6,8 +6,8 @@ import { Github, Link, Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const githubUrl = "https://github.com/your-github-username"; // Replace with your GitHub URL
-  const websiteUrl = "https://www.yourwebsite.com"; // Replace with your website URL
+  const githubUrl = "https://github.com/harranali"; // Replace with your GitHub URL
+  const websiteUrl = "https://harranali.github.io/"; // Replace with your website URL
 
   return (
     <nav className="bg-white shadow-sm p-4 sticky top-0 z-40">
