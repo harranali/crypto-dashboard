@@ -21,7 +21,7 @@ export default function Navbar() {
           >
             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-4h-2V8h4v8zm-2-6h2V8h-2v2z" />
           </svg>
-          <span className="font-bold text-xl">CryptoDash</span>
+          <span className="font-bold text-xl">Crypto Dashboard</span>
         </div>
 
         {/* Desktop menu - Right side */}
